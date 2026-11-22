@@ -3,11 +3,11 @@
   "version": "0.14.1",
   "description": "Keep a spec of a repository that people can read: one page per feature, every business rule numbered, with a local viewer. Includes the project-knowledge skill.",
   "author": {
-    "name": "WorldStoryCm",
-    "url": "https://github.com/WorldStoryCm"
+    "name": "Vadim Kuznecov",
+    "url": "https://github.com/nikomistar"
   },
-  "homepage": "https://github.com/WorldStoryCm/project-spec-skills",
-  "repository": "https://github.com/WorldStoryCm/project-spec-skills",
+  "homepage": "https://github.com/nikomistar/project-spec-skills",
+  "repository": "https://github.com/nikomistar/project-spec-skills",
   "license": "MIT",
   "keywords": [
     "spec",

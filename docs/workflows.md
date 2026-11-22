@@ -64,7 +64,7 @@ Use the project-knowledge skill to record what changed in the last week.
 [Parcel Desk](../examples/parcel-desk/README.md) is a small, fictional pickup service with a real spec/code disagreement and a ready-made knowledge vault. The vault shows three gaps at different points of the lifecycle (needs recheck, needs decision, accepted with a plan). It includes example audit, investigation and plan outputs.
 
 ```sh
-git clone https://github.com/WorldStoryCm/project-spec-skills.git
+git clone https://github.com/nikomistar/project-spec-skills.git
 cd project-spec-skills
 python3 scripts/verify.py
 ```

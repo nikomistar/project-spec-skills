@@ -1,7 +1,7 @@
 {
   "name": "project-spec-skills",
   "owner": {
-    "name": "WorldStoryCm"
+    "name": "Vadim Kuznecov"
   },
   "metadata": {
     "description": "Agent skills that keep a readable, source-backed spec of a repository."

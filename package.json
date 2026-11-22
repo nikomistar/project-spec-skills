@@ -14,13 +14,13 @@
     "ai-agents"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/WorldStoryCm/project-spec-skills#readme",
+  "homepage": "https://github.com/nikomistar/project-spec-skills#readme",
   "bugs": {
-    "url": "https://github.com/WorldStoryCm/project-spec-skills/issues"
+    "url": "https://github.com/nikomistar/project-spec-skills/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WorldStoryCm/project-spec-skills.git"
+    "url": "git+https://github.com/nikomistar/project-spec-skills.git"
   },
   "bin": {
     "project-spec": "bin/project-spec.mjs"

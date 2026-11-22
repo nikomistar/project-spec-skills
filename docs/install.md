@@ -32,7 +32,7 @@ npx project-spec update    # refresh every copy that status lists
 
 A copy of a skill holds its instructions and, for `project-knowledge`, four helper scripts: about 2,900 lines, nothing else. The viewer page stays in the package and is opened with `npx project-spec serve`. `install --with-viewer` adds the page to a copy, for a place where the helpers run without Node (a Python-only build step, for example); `install --no-viewer` takes it out again. `update` keeps a copy as it is: with the viewer if it has one, without if not. Copies made by versions before 0.10.0 have the viewer and keep it until you run `install` with `--no-viewer` for their folder.
 
-To run the unreleased version from this repository, use `npx github:WorldStoryCm/project-spec-skills status` in place of `npx project-spec status`.
+To run the unreleased version from this repository, use `npx github:nikomistar/project-spec-skills status` in place of `npx project-spec status`.
 
 ## Upgrading from an earlier version
 
@@ -69,7 +69,7 @@ After any upgrade, `npx project-spec status` shows where the copies are and whet
 The repository is also a plugin marketplace for Claude Code. Inside Claude Code:
 
 ```text
-/plugin marketplace add WorldStoryCm/project-spec-skills
+/plugin marketplace add nikomistar/project-spec-skills
 /plugin install project-spec@project-spec-skills
 ```
 
@@ -80,7 +80,7 @@ The skill then appears as `/project-spec:project-knowledge`, and Claude Code upd
 Ask the built-in skill installer:
 
 ```text
-Install these skills from WorldStoryCm/project-spec-skills:
+Install these skills from nikomistar/project-spec-skills:
 skills/project-knowledge
 ```
 
@@ -94,7 +94,7 @@ Copy the whole skill folder (it contains the references and helper scripts, and 
 - `.claude/skills/<name>/` inside one project.
 
 ```sh
-git clone https://github.com/WorldStoryCm/project-spec-skills.git
+git clone https://github.com/nikomistar/project-spec-skills.git
 mkdir -p ~/.claude/skills
 cp -R project-spec-skills/skills/project-knowledge ~/.claude/skills/
 ```
