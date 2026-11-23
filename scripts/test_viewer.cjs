@@ -15,7 +15,8 @@ const script = template.slice(scriptStart + '<script>'.length, scriptEnd);
 
 // --- static guarantees -----------------------------------------------------
 assert.equal(template.split('__KNOWLEDGE_DATA__').length - 1, 1, 'exactly one data placeholder');
-assert.ok(!/<script[^>]+\bsrc=|<link[^>]+\bhref=|\bfetch\(|XMLHttpRequest|\.innerHTML|insertAdjacentHTML|outerHTML/.test(template),
+// The one <link> allowed is the favicon, and only as an inline data: image.
+assert.ok(!/<script[^>]+\bsrc=|<link[^>]+\bhref=(?!"data:image\/svg\+xml,)|\bfetch\(|XMLHttpRequest|\.innerHTML|insertAdjacentHTML|outerHTML/.test(template),
   'no external loads or raw HTML injection');
 
 // --- fake DOM --------------------------------------------------------------

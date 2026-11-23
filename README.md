@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+  <img src="docs/images/logo.svg" width="56" height="56" alt="Project Spec logo">
+</picture>
+
 # Project Spec Skills
 
 **An agent reads your repository and writes two things: a spec of what the product does, and the questions it could not settle.**
