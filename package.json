@@ -1,6 +1,6 @@
 {
   "name": "project-spec",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "description": "Agent skills that read a repository and keep a spec people can read: one page per feature, every business rule numbered. Local viewer and one command to install and update the skills.",
   "keywords": [
     "agent-skills",

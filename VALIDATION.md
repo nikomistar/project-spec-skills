@@ -2,6 +2,14 @@
 
 > The entries below record what was checked at the time, in the terms of that time. Since then the five skills were merged into two (`spec-audit` and `spec-investigation` into `project-knowledge`, `spec-plan` into `spec-change`), the generated `AS-BUILT.md`, `GAPS.md` and `graph.html` were replaced by the viewer, and the `build` command was removed. None of that has been evaluated with a fresh agent yet. `spec-change` was never run on a real change and was removed in 0.11.0.
 
+## 2026-11-23: an agent that cannot answer npx
+
+- Seen in real use: an agent following the block in a project's instruction file ran `npx project-spec check`, and `npx` stopped to ask whether it may download the package. The agent could not answer and ran the helper script of a local copy of the skill.
+- 0.14.2: the block's two commands are `npx --yes project-spec ...`, with an automated test that the printed block has no command without it. The commands the README gives to a person are unchanged; a person can answer the question.
+- The GitHub account that holds the repository was renamed. 0.14.1 on npm still names the old address for the repository, the homepage and the issues; 0.14.2 carries the new one. Nothing depended on the old address to work: `npx` takes the package from npm by name.
+- `python3 scripts/verify.py` passed.
+- **NOT RUN:** no agent has run the new block in a project that does not have the package, so it is not observed that `--yes` is enough there, for example where the agent's sandbox has no network.
+
 ## 2026-11-20: a change request that does not make the agent wait
 
 - Seen in real use of 0.14.0: the viewer's "Change the behavior" request opened with "Ask your questions first, then change the code". The person had written the whole change ("add limit same as on mobile"), and the agent still stopped and changed nothing until told again.

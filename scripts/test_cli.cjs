@@ -180,6 +180,8 @@ try {
   assert.ok(r.out.startsWith(start) && r.out.trim().endsWith(end), r.out);
   assert.ok(r.out.includes('`knowledge/demo/` is this project\'s as-built spec') && !r.out.includes('{vault}'), r.out);
   assert.ok(r.out.split('\n').length < 25, 'the block stays short: it is read at the start of every session');
+  assert.ok(r.out.includes('`npx --yes project-spec check --vault knowledge/demo`') && !/npx project-spec/.test(r.out),
+    'an agent cannot answer the question npx asks before it downloads a package');
   fs.writeFileSync(path.join(project, 'AGENTS.md'), '# Rules\n\nUse tabs.\n');
   r = run(['instructions', '--file', 'AGENTS.md', '--file', 'CLAUDE.md', '--file', '.cursor/rules/project-spec.mdc']);
   assert.ok(r.out.includes('AGENTS.md: block added') && r.out.includes('CLAUDE.md: written') && r.out.includes('project-spec.mdc: written'), r.out);
