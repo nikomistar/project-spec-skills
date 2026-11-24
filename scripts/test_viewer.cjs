@@ -446,7 +446,7 @@ const queue = {
       run('val', 'runs/val.md', { review: 'validation', status: 'partial', updated: '2026-11-03', body: '- [x] Users\n- [ ] Orders\n' }),
       run('texts', 'runs/2026-11-04-review-texts.md', { updated: '2026-11-04', body: 'No checklist.' }),
       run('other', 'runs/2026-11-05-orders-review.md', { updated: '2026-11-05', body: '- [x] Orders\n' }),
-      gap('g-role', 'Role change', { topic: 'security', body: '# Role change\n\n## Gap\n\nA member saves the profile form.' }),
+      gap('g-role', 'Role change', { topic: 'security', review: 'abuse', body: '# Role change\n\n## Gap\n\nA member saves the profile form.' }),
       gap('g-closed', 'Closed leak', { topic: 'security', state: 'done', decision: 'done' }),
       gap('g-job', 'Job retry', { topic: 'ops', body: '# Job retry\n\n## Gap\n\nThe digest job is not retried.' }),
       gap('g-plain', 'Profile photo', {}),
@@ -476,6 +476,12 @@ const queue = {
   // the run page is one press away
   v.btn(row('Security'), 'Last run 2026-11-02').click();
   assert.equal(v.h1(), 'sec-new');
+  v.q('#back').click();
+  // a gap that names the review that wrote it is counted for that review and found by it
+  v.btn(row('Abuse'), '1 open gap').click();
+  assert.equal(v.select('Found by').value, 'abuse');
+  assert.equal(v.select('Topic').value, '', 'two reviews share a topic, so the topic is not the filter');
+  assert.deepEqual(v.rowTitles(), ['Role change']);
   v.q('#back').click();
   // and so are the gaps of the topic
   v.btn(row('Security'), '1 open gap').click();

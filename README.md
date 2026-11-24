@@ -151,7 +151,7 @@ This writes a short block into the file your agent reads at the start of a sessi
 | --- | --- |
 | `npx project-spec serve` | Open the spec and the gap queue in the browser. |
 | `npx project-spec summary` | Where the spec stands: how much of the product is mapped, the gaps by state and topic, each review and when it last ran. |
-| `npx project-spec gaps --topic security` | List gaps, the most urgent first, each with its file. Also `--state`, `--priority`, `--area`. |
+| `npx project-spec gaps --topic security` | List gaps, the most urgent first, each with its file. Also `--state`, `--priority`, `--area`, `--review`. |
 | `npx project-spec check` | Find broken pages and the pages whose code changed since they were read. |
 | `npx project-spec coverage` | What the code has that no page mentions yet. |
 | `npx project-spec instructions --file AGENTS.md` | Ask every agent in the repository to keep the spec current ([above](#keep-it-current)). |

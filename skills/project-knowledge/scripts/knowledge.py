@@ -244,8 +244,8 @@ def meta_problems(meta, unread=()):
             out.append('access is only valid on note pages: it names who may use the feature the note describes')
         elif not meta['access'] or any(not x.strip() for x in meta['access']):
             out.append('access must name at least one role, or be left out when the code was not read for it')
-    if 'review' in meta and (kind != 'run' or not re.fullmatch(r'[a-z0-9-]+', meta['review'])):
-        out.append('review is only valid on run pages and names the topic that was reviewed, in lower case: "security"')
+    if 'review' in meta and (kind not in ('run', 'gap') or not re.fullmatch(r'[a-z0-9-]+', meta['review'])):
+        out.append('review is only valid on run and gap pages and names the review, in lower case: "security"')
     if 'parent' in meta and (kind != 'note' or not meta['parent'].strip()):
         out.append('parent is only valid on note pages and names the feature note this one is a part of')
     if kind == 'plan':
@@ -1098,7 +1098,8 @@ def reviews_state(notes):
         out.append({'review': key, 'topic': topic, 'run': run['path'] if run else '', 'on': run['meta']['updated'] if run else '',
                     'done': done, 'of': len(ticks),
                     'finished': bool(run) and done == len(ticks) and run['meta']['status'] != 'partial',
-                    'openGaps': sum(1 for g in open_gaps(notes) if g['meta'].get('topic') == topic)})
+                    'openGaps': sum(1 for g in open_gaps(notes) if g['meta'].get('topic') == topic),
+                    'ownGaps': sum(1 for g in open_gaps(notes) if g['meta'].get('review', '').lower() == key)})
     return out
 
 
@@ -1149,11 +1150,12 @@ def summary_lines(repo, vault, notes, warnings):
             if r['of']:
                 text += f", {r['done']} of {r['of']} feature{'' if r['of'] == 1 else 's'}" + ('' if r['finished'] else ', not finished')
             text += f"; {prefix}{r['run']}"
-        lines.append(f"  {r['review']:<11}{text}; {r['openGaps']} open gap{'' if r['openGaps'] == 1 else 's'} with topic {r['topic']}")
+        own = f"; {r['ownGaps']} open gap{'' if r['ownGaps'] == 1 else 's'} written by it" if r['ownGaps'] else ''
+        lines.append(f"  {r['review']:<11}{text}; {r['openGaps']} open gap{'' if r['openGaps'] == 1 else 's'} with topic {r['topic']}{own}")
     return lines
 
 
-def gap_lines(notes, state='open', topic='', priority='', area='', prefix=''):
+def gap_lines(notes, state='open', topic='', priority='', area='', prefix='', review=''):
     """The gaps a filter leaves, the most urgent first: state, priority, topic, file, title."""
     wanted = []
     for g in (n for n in notes if n['meta']['type'] == 'gap'):
@@ -1167,6 +1169,8 @@ def gap_lines(notes, state='open', topic='', priority='', area='', prefix=''):
         if priority and (m.get('priority', '').strip().lower() or 'none') != priority.lower():
             continue
         if area and area not in m['areas']:
+            continue
+        if review and (m.get('review', '').lower() or 'none') != review.lower():
             continue
         wanted.append(g)
     wanted.sort(key=lambda g: (STATE_ORDER.index(g['state']), priority_rank(g['meta']), g['meta']['title']))
@@ -1280,6 +1284,7 @@ def main(argv=None):
     parser.add_argument('--topic', default='', help='gaps: one topic, or "none" for gaps without one')
     parser.add_argument('--priority', default='', help='gaps: one priority, or "none" for gaps without one')
     parser.add_argument('--area', default='', help='gaps: the id of one area')
+    parser.add_argument('--review', default='', help='gaps: the review that wrote the gap, or "none" for gaps no review wrote')
     parser.add_argument('--viewer', type=Path, metavar='FILE',
                         help='serve, build: a page of your own instead of the viewer; it gets the data where it says __KNOWLEDGE_DATA__')
     parser.add_argument('--with-sources', action='store_true', help='build: include the text of the repository files the pages cite')
@@ -1312,8 +1317,8 @@ def main(argv=None):
     vault = args.vault.resolve() if args.vault else find_vault(repo)
     if not vault.is_dir():
         parser.error('repo and vault must be existing directories')
-    if args.command != 'gaps' and (args.state != 'open' or args.topic or args.priority or args.area):
-        parser.error('--state, --topic, --priority and --area are only for gaps')
+    if args.command != 'gaps' and (args.state != 'open' or args.topic or args.priority or args.area or args.review):
+        parser.error('--state, --topic, --priority, --area and --review are only for gaps')
     if args.state not in ('open', 'closed', 'all', *STATE_ORDER):
         parser.error('--state must be open, closed, all or one of ' + ', '.join(STATE_ORDER))
     if args.viewer and args.command not in ('serve', 'build'):
@@ -1382,7 +1387,7 @@ def main(argv=None):
         # A report, not a check: it still answers when some pages are broken, and says that they are left out.
         lines = (summary_lines(repo, vault, notes, warnings) if args.command == 'summary'
                  else gap_lines(notes, args.state, args.topic, args.priority, args.area,
-                                Path(os.path.relpath(vault, repo)).as_posix() + '/'))
+                                Path(os.path.relpath(vault, repo)).as_posix() + '/', args.review))
         if errors:
             pages = len({error_page(m) for m in errors if error_page(m)})
             lines.append(f'check: {len(errors)} errors on {pages} pages, which are left out above; run check to see them')

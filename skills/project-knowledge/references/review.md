@@ -15,6 +15,7 @@ It never changes application code and never decides a gap.
 A review reads code. It runs no scanner, no test and no application, like every other pass of this skill.
 
 - Known vulnerabilities in dependencies, outdated packages, secrets in the Git history and the settings of what is deployed are found by tools, not by reading. Name the tool under "Not covered" in the report (`npm audit`, `pip-audit`, `osv-scanner`, a secret scanner). Run one only when the person asks. Settings the repository holds (a storage bucket, a queue or a function declared in a file) are code, and are read.
+- A document in the repository that says how the product should work (a design note, an architecture page) is not evidence for a review and is not reviewed by it. Comparing it with the code is [an audit](audit.md).
 - It is not a penetration test and not a certificate. "No gaps found" means the questions below found nothing in the code that was read. Say it that way, never "the product is secure".
 
 ## The pass
@@ -22,12 +23,26 @@ A review reads code. It runs no scanner, no test and no application, like every 
 1. **Scope.** The whole product, an area, one feature, or what changed since a commit or a day ("review the security of what changed last week" takes the features the diff touches). Say which before you start.
 2. **The list.** A review needs a map: [the inventory file](../SKILL.md#the-inventory-file) is its list of features and entry points. Without a vault, say so and offer a map first. A question about one feature in a repository that has no vault is an **investigate**, and it ends as a report. A feature the inventory has as `not started` is reviewed from the code alone, and the run page says its page does not exist yet.
 3. **The run page.** Create `runs/<date>-review-<topic>.md` with `review: "<topic>"` and `status: "partial"`: the topic, the scope, the revision, and the features in scope as a checklist (`- [ ] Name of the feature`). Write a feature's name as plain text, or its page's path in code formatting: a run page never links to vault pages, and `check` refuses it when it does. Tick a feature when every question was asked of every one of its entry points. Save it after each feature. A later session reads this page first and goes on with the first unticked feature. The viewer and the `summary` command read this page to say which reviews were run, when, and how far each got, so keep the property, the name and the checklist as written here.
-4. **One feature at a time.** Read the feature's page, then open each entry point and answer the topic's questions from the code. The page tells you where to look; it is not the evidence. Ask every question of every entry point it applies to, and do not stop at the first finding.
+4. **One feature at a time.** Read the feature's page, then open each entry point and answer the topic's questions from the code. The page tells you where to look; it is not the evidence. Ask every question of every entry point it applies to, and do not stop at the first finding. A question the product has nothing for (it has no accounts, takes no files, calls no other service) is skipped: name it once on the run page, under the checklist, with the reason.
 5. **Each answer goes to one place.**
    - The code does it, and the page does not say so: add the rule to the page, with the next free number. For security, also set [the page's `access`](format.md#properties).
    - The code does it, and the page says so: nothing to write.
    - The code does not do it, does it in one place and not in another, or you cannot tell whether it is meant: a gap.
 6. **Finish.** Run `check`. Set the run page to `current` when every feature in scope is ticked. Report real counts: features reviewed out of those in scope, rules added, gaps written by priority, and "Not covered" with the tools that would cover it.
+
+## A product that is not a web application
+
+The lists are written in the words of a product with accounts, forms, a server and a database. A desktop or mobile app, a command-line tool or a library has the same questions under other names. Ask them of what the product has:
+
+- **A role or a permission** is also what the system grants the app: the microphone, the screen, a folder, notifications. It can be refused, and taken away later.
+- **A step of a flow** is also a system dialog, the installer, the first launch, an update.
+- **A record** is also a file on disk, a setting, a temporary folder.
+- **Two at once** is also two running copies of the app, or the old version and the new one during an update.
+- **Another service** is also the operating system, the store, the update feed.
+
+What the system does in such a moment (which dialog it shows, whether it starts a second copy) is often not in the repository. Say what the code does and does not handle, name the rest under "Not covered", and write the doubt as a `knowledge-gap`.
+
+A review most of whose questions have nothing to ask (an API review of an app that calls nothing) is still run. It is short, and its run page says which questions were skipped.
 
 ## Writing the gaps
 
@@ -37,6 +52,7 @@ The rules in [gaps.md](gaps.md) apply. A review adds these:
 - **One doubt per page.** The same missing check in several entry points of one feature is one gap that lists them. In two features it is two gaps, because each feature has its own owner and decision.
 - **The title is the question a person decides**: "Should a member be able to change another member's role by saving the profile form?", not "Broken access control in users.save".
 - **`topic` is the one the list below names**, the same for every gap of the pass, so the queue can be filtered to what this review found.
+- **`review` is this pass's word**, the same as on the run page: `review: "flows"`. It says which review wrote the gap, which `topic` cannot say when two reviews share one. `summary`, `gaps --review` and the viewer count by it. A gap that was already in the queue keeps what it has.
 - **`kind` as usual**: `product-gap` when a rule the product enforces elsewhere is not enforced here, `conflict` when two places disagree (the web refuses what the server accepts), `knowledge-gap` when you cannot tell whether it is meant, `product-plan` for something to add (a limit on sign-in attempts).
 - **`priority`**: `high` when a person can read or change what is not theirs, act without signing in, or move money; `medium` when it needs a signed-in insider or an unusual condition; `low` otherwise.
 - **Evidence says how it is reached, in words**: which entry point, which check is absent, which symbol. `NOT RUN` for what was only read. No working request, script or payload: the page is for the person who fixes it.
@@ -68,7 +84,7 @@ And by kind of entry point:
 
 ## Abuse
 
-Gaps get `topic: "security"`; give the run page `review: "abuse"`. A security review asks who may do a thing. This one asks what a person who may do it can do too much of: send something too big, do it too often, or send something that is not what it says. Read every entry point as an ordinary member with an account of their own, not as an outsider.
+Gaps get `topic: "security"`; give the run page `review: "abuse"`. A security review asks who may do a thing. This one asks what a person who may do it can do too much of: send something too big, do it too often, or send something that is not what it says. Read every entry point as an ordinary member with an account of their own, not as an outsider. Where there is no other person to harm (an app with one user, on their own machine), a missing limit is not about security: give that gap `topic: "ops"`.
 
 Three things differ from the other passes:
 
@@ -148,7 +164,7 @@ Go one feature at a time like any review, and start at its edges: every way a pe
 6. **Waiting.** Where the next step belongs to another person or another system (an approval, an invite to accept, a payment to be confirmed, a job): what does each side see meanwhile? When it never comes, does it run out, is anyone reminded, can it be withdrawn? And when it comes late, after the request was cancelled or answered by someone else?
 7. **In another order.** A person opens the third step by its address, presses Back after the last one, has the same flow open in two tabs, or does a step twice. What do they see, and what is made twice? Whether the server refuses a skipped step is the business of [a security review](#security); write a gap for one you meet, with `topic: "security"`.
 
-`priority` is `high` when a person is left with no way on (they paid and cannot get in, they cannot finish signing up) or pays for what they did not get; `medium` when there is a way round; `low` otherwise. `kind` is `product-gap` when one feature leaves a state the next does not handle, `conflict` when two features say different things about the same step, `product-plan` for a step the product has nowhere (no way to withdraw an invite), and `knowledge-gap` when you cannot tell.
+`priority` is `high` when a person is left with no way on (they paid and cannot get in, they cannot finish signing up), pays for what they did not get, or loses work they had made (a recording, a draft, an upload); `medium` when there is a way round; `low` otherwise. `kind` is `product-gap` when one feature leaves a state the next does not handle, `conflict` when two features say different things about the same step, `product-plan` for a step the product has nowhere (no way to withdraw an invite), and `knowledge-gap` when you cannot tell.
 
 ## Failure paths
 
@@ -160,7 +176,7 @@ Gaps get `topic: "ops"`; name the run page `<date>-review-failures.md` with `rev
 4. **Failing quietly.** An error caught and dropped, a result nobody checks, an email or a notification that fails with no trace.
 5. **Partial work.** A job over many records that stops in the middle: does the next run go on, start over, or skip what is left?
 6. **Schedules.** What happens when a run is missed or two runs overlap? In which time zone is the schedule read?
-7. **Limits.** A queue, a list or an upload that can grow without a bound; a job that reads every record at once.
+7. **Limits.** A queue, a list or a folder that grows without a bound in ordinary use; a job that reads every record at once. What one caller can send too big or do too often on purpose is the business of [an abuse review](#abuse).
 8. **Configuration.** A setting or key that is missing: does the product refuse to start, or run and fail later? Is there a default that is wrong for production?
 9. **What the person is told.** After a failure, does the screen say what happened and what to do, or only that something went wrong?
 
@@ -182,7 +198,7 @@ Gaps get `topic: "api"`. For what another system can call, and for the calls the
 Gaps get `topic: "ui"`. For every screen, in every client.
 
 1. **States.** What does a person see while it loads, when the list is empty, when the request fails, when they have no permission, when the record does not exist? A state the screen does not handle is a gap.
-2. **The same thing built twice.** Go through the component folders and list each control that exists more than once: two date pickers, three confirm dialogs, two ways to show an error. Copies that look or behave differently are a gap that names the screens. Copies that are the same are one `low` gap per control, as a proposal to keep one.
+2. **The same thing built twice.** Go through the component folders and list each control that exists more than once: two date pickers, three confirm dialogs, two ways to show an error. Copies that look or behave differently are a gap that names the screens. Copies that look and behave the same are not a gap: name them on the run page, for whoever wants to keep one.
 3. **Words.** One action or thing under different names on different screens, one refusal with different messages, text written in one language where the product is translated.
 4. **Actions.** Something that cannot be undone and asks no confirmation, a button that stays active while its request runs, input lost without a warning when the person leaves.
 5. **Shown and allowed.** A control shown to a person whose request the server refuses, or hidden from one the server would allow.

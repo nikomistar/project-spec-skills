@@ -182,7 +182,7 @@ reviews:
   validation not run; 0 open gaps with topic validation
 ```
 
-`npx project-spec gaps --topic security --priority high` lists the gaps one filter leaves, the most urgent first, each with its file, so an agent can be asked for "the high security gaps" without opening the viewer.
+`npx project-spec gaps --topic security --priority high` lists the gaps one filter leaves, the most urgent first, each with its file, so an agent can be asked for "the high security gaps" without opening the viewer. `--review flows` lists what one review wrote, which a topic cannot when two reviews share it.
 
 A review opens every entry point again, so it takes about as long as the map of the features it covers. Run one topic at a time, and name an area or "what changed last week" to keep it short. It reads code: vulnerable or outdated packages, secrets in the Git history and server configuration are for tools (`npm audit`, `osv-scanner`, a secret scanner), and the report names what it did not cover. Security gaps describe weaknesses of a live product, so think before you publish the vault where people outside the team can read it.
 

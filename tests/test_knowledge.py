@@ -588,7 +588,7 @@ class GapLayerTests(Fixture):
     def test_summary_and_gaps_say_where_the_spec_stands(self):
         gap = dict(sources=[], kind='product-gap', recheck='not-checked', decision='open', status=None, body=GAP_BODY)
         self.note('gaps/role.md', 'role', 'gap', topic='security', priority='high', **gap)
-        self.note('gaps/leak.md', 'leak', 'gap', topic='security', priority='low', **gap)
+        self.note('gaps/leak.md', 'leak', 'gap', topic='security', priority='low', review='abuse', **gap)
         self.note('gaps/plain.md', 'plain', 'gap', **gap)
         self.note('gaps/old.md', 'old', 'gap', topic='security', **(gap | {'decision': 'duplicate', 'duplicate_of': 'role'}))
         (self.vault / '.knowledge').mkdir(exist_ok=True)
@@ -609,7 +609,8 @@ class GapLayerTests(Fixture):
         self.assertIn('open gaps by topic: security 2 (1 high), no topic 1', lines)
         reviews = [line.strip() for line in lines[lines.index('reviews:') + 1:]]
         self.assertEqual(reviews[0], 'security   started 2026-11-14, 1 of 3 features, not finished; ' + at + 'runs/sec.md; 2 open gaps with topic security')
-        self.assertEqual(reviews[1], 'abuse      not run; 2 open gaps with topic security', 'an abuse review writes security gaps')
+        self.assertEqual(reviews[1], 'abuse      not run; 2 open gaps with topic security; 1 open gap written by it',
+                         'an abuse review writes security gaps, and a gap that names its review is counted for it')
         self.assertEqual(reviews[2], 'validation not run; 0 open gaps with topic validation')
         self.assertEqual(reviews[4], 'logic      not run; 0 open gaps with topic logic')
         self.assertEqual(reviews[5], 'flows      not run; 0 open gaps with topic logic', 'a flows review writes logic gaps')
@@ -626,6 +627,9 @@ class GapLayerTests(Fixture):
         self.assertEqual(listed[-1], 'gaps: 3 listed')
         self.assertEqual(self.run_cli('gaps', '--topic', 'security', '--priority', 'high')[1].splitlines()[-1], 'gaps: 1 listed')
         self.assertIn(at + 'gaps/plain.md', self.run_cli('gaps', '--topic', 'none')[1])
+        self.assertEqual(self.run_cli('gaps', '--review', 'abuse')[1].splitlines()[-1], 'gaps: 1 listed', 'the gaps one review wrote')
+        self.assertIn(at + 'gaps/leak.md', self.run_cli('gaps', '--review', 'abuse')[1])
+        self.assertEqual(self.run_cli('gaps', '--review', 'none')[1].splitlines()[-1], 'gaps: 2 listed')
         self.assertEqual(self.run_cli('gaps', '--state', 'closed')[1].splitlines()[-1], 'gaps: 1 listed')
         self.assertEqual(self.run_cli('gaps', '--state', 'all')[1].splitlines()[-1], 'gaps: 4 listed')
         # a broken page is left out and counted, and the report still answers
@@ -634,12 +638,12 @@ class GapLayerTests(Fixture):
         self.assertEqual(status, 0)
         self.assertEqual(out.splitlines()[-1], 'check: 1 errors on 1 pages, which are left out above; run check to see them')
         self.note('gaps/bad.md', 'bad', 'gap', **gap)
-        # `review` belongs to run pages and is one lower-case word
+        # `review` belongs to run and gap pages and is one lower-case word
         self.note('notes/n.md', 'n', sources=['source.txt'], review='security')
-        self.assertIn('review is only valid on run pages', self.run_cli('check')[2])
+        self.assertIn('review is only valid on run and gap pages', self.run_cli('check')[2])
         self.note('notes/n.md', 'n', sources=['source.txt'])
         self.note('runs/sec.md', 'sec-new', 'run', areas=[], review='Security review')
-        self.assertIn('review is only valid on run pages and names the topic', self.run_cli('check')[2])
+        self.assertIn('review is only valid on run and gap pages and names the review', self.run_cli('check')[2])
 
     def test_history_and_pending_pages_come_from_git(self):
         k._history_cache.clear()

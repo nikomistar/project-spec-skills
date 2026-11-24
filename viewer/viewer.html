@@ -1933,6 +1933,9 @@
         };
         const runDay = (n) => str(n.updated) || (/(\d{4}-\d{2}-\d{2})/.exec(str(n.path)) || [])[1] || "";
         const topicOf = (n) => str(n.topic).trim().toLowerCase();
+        // The review that wrote a gap, when the gap says so.
+        const foundBy = (n) => (isGap(n) ? str(n.review).trim().toLowerCase() : "");
+        const reviewLabel = (key) => (REVIEWS.find((r) => r[0] === key) || [])[1] || topicLabel(key);
         const topicLabel = (t) => topicLabels[t] || (t ? t[0].toUpperCase() + t.slice(1) : "");
         // Who may use a feature, as its page states it: a list of the product's own role names.
         const accessOf = (n) => (Array.isArray(n.access) ? n.access.map((a) => str(a).trim()).filter(Boolean) : []);
@@ -3017,7 +3020,8 @@
             const row = el("div", null, "row"),
               grow = el("div", null, "grow"),
               run = last.get(key),
-              open = nodes.filter((g) => isGap(g) && topicOf(g) === topic && !isClosed(g)).length;
+              own = nodes.filter((g) => foundBy(g) === key && !isClosed(g)).length,
+              open = own || nodes.filter((g) => isGap(g) && topicOf(g) === topic && !isClosed(g)).length;
             grow.append(el("b", label));
             if (what) grow.append(el("span", what, "muted small"));
             row.append(grow);
@@ -3035,7 +3039,8 @@
             if (open)
               row.append(
                 button(plural(open, "open gap"), "btn", () => {
-                  gapTopic = topic;
+                  gapTopic = own ? "" : topic;
+                  gapReview = own ? key : "";
                   gapState = "open";
                   gapArea = gapKind = gapPriority = gapWords = "";
                   gapShown = GAP_PORTION;
@@ -3248,6 +3253,7 @@
           gapArea = "",
           gapKind = "",
           gapTopic = "", // "" for all, "none" for gaps without one, otherwise the value
+          gapReview = "", // "" for all, otherwise the review that wrote the gap
           gapWords = "", // every word must be in the gap's title, summary, path or text
           gapPriority = ""; // "" for all, "none" for gaps without one, otherwise the value
         const selectOf = (label, options, value, pick) => {
@@ -3320,6 +3326,15 @@
                 again();
               }),
             );
+          // Only the reviews that gaps name; nothing to pick when no gap says which review wrote it.
+          const found = [...new Set(nodes.map(foundBy).filter(Boolean))].sort();
+          if (found.length || gapReview)
+            filters.append(
+              selectOf("Found by", [["", "Any pass"], ...found.map((r) => [r, reviewLabel(r)])], gapReview, (v) => {
+                gapReview = v;
+                again();
+              }),
+            );
           // Only the priorities the queue has, most urgent first; nothing to pick when no gap has one.
           const priorities = [...new Set(nodes.filter(isGap).map(priorityOf).filter(Boolean))].sort(
             (a, b) => priorityRank({ priority: a }) - priorityRank({ priority: b }) || a.localeCompare(b),
@@ -3354,7 +3369,7 @@
           );
           order.className = "push";
           filters.append(order);
-          const anyFilter = () => gapArea || gapKind || gapTopic || gapPriority || gapWords.trim();
+          const anyFilter = () => gapArea || gapKind || gapTopic || gapReview || gapPriority || gapWords.trim();
           const paint = () => {
             const asked = gapWords.toLowerCase().split(/\s+/).filter(Boolean),
               pool = nodes.filter(
@@ -3363,6 +3378,7 @@
                   inArea(n, gapArea) &&
                   (!gapKind || n.kind === gapKind) &&
                   (!gapTopic || (topicOf(n) || "none") === gapTopic) &&
+                  (!gapReview || foundBy(n) === gapReview) &&
                   (!gapPriority || (priorityOf(n) || "none") === gapPriority) &&
                   asked.every((w) => textOfGap(n).includes(w)),
               ),
@@ -3417,7 +3433,7 @@
               if (anyFilter())
                 below.append(
                   button("Clear the filters", "btn", () => {
-                    gapArea = gapKind = gapTopic = gapPriority = gapWords = "";
+                    gapArea = gapKind = gapTopic = gapReview = gapPriority = gapWords = "";
                     again();
                   }),
                 );

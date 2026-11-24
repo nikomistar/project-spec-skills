@@ -37,7 +37,7 @@ Read the spec
       Write the viewer as one HTML file, to show the spec on a server.
   project-spec summary
       Where the spec stands: how much of the map is finished, the gaps by state and topic, each review and when it ran.
-  project-spec gaps [--state open|closed|all|STATE] [--topic T] [--priority P] [--area ID]
+  project-spec gaps [--state open|closed|all|STATE] [--topic T] [--priority P] [--area ID] [--review R]
       List gaps, the most urgent first, each with its file.
   project-spec check | snapshot [options]
       The knowledge helper; --repo defaults to the current folder.

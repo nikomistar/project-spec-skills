@@ -2,6 +2,21 @@
 
 > The entries below record what was checked at the time, in the terms of that time. Since then the five skills were merged into two (`spec-audit` and `spec-investigation` into `project-knowledge`, `spec-plan` into `spec-change`), the generated `AS-BUILT.md`, `GAPS.md` and `graph.html` were replaced by the viewer, and the `build` command was removed. None of that has been evaluated with a fresh agent yet. `spec-change` was never run on a real change and was removed in 0.11.0.
 
+## 2026-11-24: nine reviews on a small desktop app
+
+- The first run of `logic` and `flows`, and the first time all nine reviews were run on one product: a macOS screen recorder with a static website and one small server function, 54 files. One agent (Claude Opus 5.5) mapped it and then ran each review as a pass of its own, with 0.16.0 read from this repository. The time was not recorded.
+- The map: 12 of 12 features, 113 rules, 12 gaps. The nine reviews added 21 rules and 37 gaps: flows 13, logic 9, data 4, UI 4, failure paths 3, abuse 2, security 1, validation 1, API 0. That is 49 open gaps, 18 medium and 31 low, none high. `check` passed. The agent said about five of the flows and logic gaps were doubts it had noticed while mapping and held back, so the share of those two reviews is overstated. 26 times a review met a doubt that was already in the queue and added a line to that gap.
+- Three gaps were read against the code by a second agent and hold. An update that finishes installing quits the app without looking whether a recording is running, and the new copy empties the temporary folder when it starts. A second running copy empties the same folder under the first. The website says the app never connects to the internet, and the app asks GitHub for updates. The first two lie between two features and were written by the flows review. The other 46 gaps were not rechecked.
+- What the run showed, and what 0.17.0 changes:
+  - `summary` printed "22 open gaps with topic logic" beside both `logic` and `flows`, and nothing said which review wrote which gap. A gap now names the review that wrote it (`review`); `summary` counts by it, `gaps --review` lists by it, and the viewer's queue has a "Found by" filter.
+  - The lists speak of accounts, roles, forms, a server and a database, and the agent had to translate them for a desktop app: what mattered was a permission of the system, the app started from its disk image, a system dialog, a second running copy. The guide has a section that says how to ask the same questions of such a product.
+  - Logic called lost work `high` and flows did not name it, so a lost recording got `medium`. Flows now names it too.
+  - Abuse and failure paths both asked about limits, and an abuse gap on an app with one user got the topic `security`. The guide says which review asks what, and that such a gap gets `ops`.
+  - The UI list required a gap for a control built twice that looks and behaves the same. It is now named on the run page and is not a gap.
+  - A question the product has nothing for is named on the run page in every review, not only in abuse. A design document in the repository is not reviewed; that is an audit.
+- `python3 scripts/verify.py` passed, with helper and viewer tests for the new property, the line of `summary`, `gaps --review` and the "Found by" filter.
+- **NOT RUN:** none of these changes has been run by an agent. It was one product, small, and not a web application, so `logic` and `flows` have still not been run on the kind of product their lists were written for. No person has decided any of the 49 gaps, so how many are worth having is not known. Whether a review still wrote a twin of a gap that was already there was not checked.
+
 ## 2026-11-24: the rules themselves, and what lies between features
 
 - Asked by the project's owner, not seen in a run: which of the things that matter to a person using the product no review looks at. Security, abuse and validation ask whether a rule is enforced; data, failure paths, API and UI ask about records, failures, calls and screens. `logic` was a topic for gaps with no list of questions, so a review of it went through "Another topic" with questions the agent made up on the day. And every review read one feature and stopped where it ends, so nothing asked what one feature leaves for the next.
