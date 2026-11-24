@@ -155,6 +155,17 @@ More prompts are in [Working with the skills](docs/workflows.md#example-prompts)
 
 The map raises the doubts it meets on the way. A review is a separate pass for one topic: the agent goes through every way into the product again with a fixed list of questions, so nothing is skipped because it looked fine. What the code answers becomes a rule on the feature's page; each doubt becomes a gap with that topic.
 
+Paste this, with the words from the first column in place of `security`:
+
+```text
+Use the project-knowledge skill in review mode: review the product for security.
+Go by the inventory file, one feature at a time, and ask every question of the
+review guide. Read the code and run nothing. Write each doubt as its own gap,
+and tell me how many features you reviewed.
+```
+
+If the session stops before the end: `Use project-knowledge to continue the security review from its run page.`
+
 | Ask for | What it looks for |
 | --- | --- |
 | `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
