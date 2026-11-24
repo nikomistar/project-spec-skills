@@ -13,6 +13,73 @@ This is an early project. It has been used on a few real repositories; [VALIDATI
 
 ![A gap in the viewer: one question about the product, with who rechecked it, who decided it, its plan and the features it is about](docs/images/viewer-gap-page.png)
 
+## Start
+
+You need an agent that can read your repository (Claude Code or Codex), Python 3.10+, Git, and Node 18+ for the `npx` commands.
+
+**1. Install the skill** (once per machine):
+
+```sh
+npx project-spec install --claude      # or --codex
+```
+
+**2. Open your agent in the project and paste this:**
+
+```text
+Use the project-knowledge skill to build a knowledge vault for this repository.
+Put it in project-spec/.
+
+First take the inventory: every app and package, and every way into each one:
+what a person can open, what another system can call, what runs on its own and
+what the product sends out. Write it to the inventory file before any page.
+
+Then go one feature at a time and finish each before the next. Describe only
+what the code does: one page per feature with numbered business rules, and
+every doubt as its own gap.
+
+If you run out of time, stop at the end of a feature and tell me how many
+features are finished, in progress and not started.
+```
+
+**3. Read what it wrote:**
+
+```sh
+npx project-spec serve
+```
+
+This first map is the long run: from one to a few hours of agent time, more for a big product. To go on where a session stopped: `Use the project-knowledge skill and continue the map from the inventory file.`
+
+The agent writes only Markdown in that folder. It does not change application code, commit or push. Other ways to install, and pinning one version for a team: [Install and update](docs/install.md).
+
+## Reviews
+
+The map raises the doubts it meets on the way. A review is a separate pass for one topic: the agent goes through every way into the product again with a fixed list of questions, so nothing is skipped because it looked fine. What the code answers becomes a rule on the feature's page; each doubt becomes a gap with that topic.
+
+Paste this, with the words from the first column in place of `security`:
+
+```text
+Use the project-knowledge skill in review mode: review the product for security.
+Go by the inventory file, one feature at a time, and ask every question of the
+review guide. Read the code and run nothing. Write each doubt as its own gap,
+and tell me how many features you reviewed.
+```
+
+If the session stops before the end: `Use project-knowledge to continue the security review from its run page.`
+
+| Ask for | What it looks for |
+| --- | --- |
+| `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
+| `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
+| `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
+| `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
+| `its logic` | Rules that disagree with each other, a state, role or plan nobody decided for, what happens at the limit and to the last admin, what a plan or price change does to what already exists. |
+| `its flows` | What lies between features: a state the next feature does not know, a link that leads nowhere, a step left in the middle, waiting for someone who never answers. |
+| `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |
+| `its UI` | Missing loading, empty and error states, the same control built twice, one thing under two names. |
+| `failure paths` | What happens when a job or another service fails: retries, half-done work, errors nobody sees. |
+
+A review opens every entry point again, so it takes about as long as the map of the features it covers. Run one topic at a time, and name an area (`review the billing area for security`) to keep it short. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
+
 ## What you get
 
 A folder in your repository, `project-spec/` unless you name another:
@@ -64,58 +131,17 @@ A gap is one question about the product that a person can check and decide: *"Sh
 
 The agent proposes and rechecks; only a person decides, and the agent never records a decision nobody made. A closed gap is not deleted: the spec says what the code does, and the gap is the one place that says why.
 
-Expect many. On the two products this was first used on, the map left more than 150 gaps each, so every gap has two labels to read the queue by:
+Expect many. On the two products this was first used on, the map left more than 150 gaps each, so every gap has two labels to read the queue by: its area, the part of the product it is about, and its topic, the kind of problem (`security`, `validation`, `data`, `logic`, `ui`, `api` or `ops`).
 
-- **Its area**, the part of the product it is about.
-- **Its topic**, what kind of problem it is:
+## Keep it current
 
-| Topic | The gap is about |
-| --- | --- |
-| `security` | Who can reach, see or change what; tokens and secrets. |
-| `validation` | A field checked differently, or not at all, by the form, the server and the database. |
-| `data` | Records that can be lost, damaged or out of step with each other. |
-| `logic` | A business rule that is missing, unclear or contradicts another. |
-| `ui` | What a person sees: states, texts, the same thing looking different in two places. |
-| `api` | What another system calls: unused, undocumented or inconsistent endpoints. |
-| `ops` | Jobs, schedules, configuration, what happens when something fails. |
-
-## Start
-
-You need an agent that can read your repository (Claude Code or Codex), Python 3.10+, Git, and Node 18+ for the `npx` commands.
-
-**1. Install the skill** (once per machine):
+A spec is only worth reading while it is true. The cheap way is to let whoever changes the code correct the spec in the same task, as an edit the size of the change: a changed validation message is one row of one table, not a new review of the project.
 
 ```sh
-npx project-spec install --claude      # or --codex
+npx project-spec instructions --file AGENTS.md      # or CLAUDE.md, GEMINI.md, .cursor/rules/project-spec.mdc
 ```
 
-**2. Open your agent in the project and paste this:**
-
-```text
-Use the project-knowledge skill to build a knowledge vault for this repository.
-Put it in project-spec/.
-
-First take the inventory: every app and package, and every way into each one:
-what a person can open, what another system can call, what runs on its own and
-what the product sends out. Write it to the inventory file before any page.
-
-Then go one feature at a time and finish each before the next. Describe only
-what the code does: one page per feature with numbered business rules, and
-every doubt as its own gap.
-
-If you run out of time, stop at the end of a feature and tell me how many
-features are finished, in progress and not started.
-```
-
-**3. Read what it wrote:**
-
-```sh
-npx project-spec serve
-```
-
-This first map is the long run: from one to a few hours of agent time, more for a big product. To go on where a session stopped: `Use the project-knowledge skill and continue the map from the inventory file.`
-
-The agent writes only Markdown in that folder. It does not change application code, commit or push. Other ways to install, and pinning one version for a team: [Install and update](docs/install.md).
+This writes a short block into the file your agent reads at the start of a session (Codex, Cursor, Claude Code, Gemini CLI, GitHub Copilot). It asks the agent to read a feature's page before changing it and to correct the changed rules afterwards. For everything since the last review, by everyone: `Use project-knowledge to sync the vault.`
 
 ## Commands
 
@@ -128,10 +154,8 @@ The agent writes only Markdown in that folder. It does not change application co
 | `npx project-spec gaps --topic security` | List gaps, the most urgent first, each with its file. Also `--state`, `--priority`, `--area`. |
 | `npx project-spec check` | Find broken pages and the pages whose code changed since they were read. |
 | `npx project-spec coverage` | What the code has that no page mentions yet. |
-| `npx project-spec instructions --file AGENTS.md` | Ask every agent in the repository to keep the spec current ([below](#keep-it-current)). |
-| `npx project-spec build --out FILE` | The viewer as one file, to show on a server. |
+| `npx project-spec instructions --file AGENTS.md` | Ask every agent in the repository to keep the spec current ([above](#keep-it-current)). |
 | `npx project-spec move --to DIR` | Move the spec to another folder without breaking its links. |
-| `npx project-spec status` / `update` | Where the skill is installed, and refresh those copies. |
 
 ### Ask your agent
 
@@ -142,57 +166,17 @@ The skill has no commands of its own: you ask in words.
 | You want to know where things stand | `Use project-knowledge: what is the status of the spec?` |
 | You changed the code | `Use project-knowledge to record this change in the spec.` |
 | Others changed the code | `Use project-knowledge to record what changed last week.` |
-| You want one topic checked on purpose | `Use project-knowledge in review mode: review the product for security.` |
 | You want the gaps checked | `Use project-knowledge in gaps mode: recheck the high-priority gaps against the code.` |
 | A gap is accepted | `Use project-knowledge to plan the gap <name>. Plan only.` |
 | A page looks thin | `Use project-knowledge to explore <feature> until it is finished.` |
 | You have one question | `Use project-knowledge to investigate: <question>.` |
 | A document says how it should work | `Use project-knowledge to audit <document> against the code.` |
 
-More prompts are in [Working with the skills](docs/workflows.md#example-prompts).
-
-### Reviews
-
-The map raises the doubts it meets on the way. A review is a separate pass for one topic: the agent goes through every way into the product again with a fixed list of questions, so nothing is skipped because it looked fine. What the code answers becomes a rule on the feature's page; each doubt becomes a gap with that topic.
-
-Paste this, with the words from the first column in place of `security`:
-
-```text
-Use the project-knowledge skill in review mode: review the product for security.
-Go by the inventory file, one feature at a time, and ask every question of the
-review guide. Read the code and run nothing. Write each doubt as its own gap,
-and tell me how many features you reviewed.
-```
-
-If the session stops before the end: `Use project-knowledge to continue the security review from its run page.`
-
-| Ask for | What it looks for |
-| --- | --- |
-| `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
-| `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
-| `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
-| `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
-| `its logic` | Rules that disagree with each other, a state, role or plan nobody decided for, what happens at the limit and to the last admin, what a plan or price change does to what already exists. |
-| `its flows` | What lies between features: a state the next feature does not know, a link that leads nowhere, a step left in the middle, waiting for someone who never answers. |
-| `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |
-| `its UI` | Missing loading, empty and error states, the same control built twice, one thing under two names. |
-| `failure paths` | What happens when a job or another service fails: retries, half-done work, errors nobody sees. |
-
-A review opens every entry point again, so it takes about as long as the map of the features it covers. Run one topic at a time, and name an area (`review the billing area for security`) to keep it short. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
-
-## Keep it current
-
-A spec is only worth reading while it is true. The cheap way is to let whoever changes the code correct the spec in the same task, as an edit the size of the change: a changed validation message is one row of one table, not a new review of the project.
-
-```sh
-npx project-spec instructions --file AGENTS.md      # or CLAUDE.md, GEMINI.md, .cursor/rules/project-spec.mdc
-```
-
-This writes a short block into the file your agent reads at the start of a session (Codex, Cursor, Claude Code, Gemini CLI, GitHub Copilot). It asks the agent to read a feature's page before changing it and to correct the changed rules afterwards. For everything since the last review, by everyone: `Use project-knowledge to sync the vault.`
+The request for a review is [above](#reviews). More prompts are in [Working with the skills](docs/workflows.md#example-prompts).
 
 ## The viewer
 
-One local page, read from the files on disk. Nothing is built or uploaded, and it is not copied into your project. The spec also opens in Obsidian, so the viewer is optional.
+One local page, read from the files on disk. Nothing is built or uploaded, and it is not copied into your project.
 
 - **Read** a feature page: its purpose, its flow, its rules.
 - **Work the gaps**: the queue by state, with filters for area, topic, kind and priority and a field that finds a gap by its words.
@@ -201,13 +185,7 @@ One local page, read from the files on disk. Nothing is built or uploaded, and i
 
 ![A feature page in the viewer: what the feature is for, how it works, and its business rules as numbered rows](docs/images/viewer-page.png)
 
-| Gap queue | Copy for AI |
-| --- | --- |
-| ![The gap queue with its states as tabs and filters for words, area, kind, topic and priority](docs/images/viewer-gaps.png) | ![The Copy for AI dialog with the exact text that will be copied](docs/images/viewer-copy.png) |
-| **Search** | **Recent changes** |
-| ![Search results grouped into features, gaps and files](docs/images/viewer-search.png) | ![The vault's Git history, one line per commit](docs/images/viewer-changes.png) |
-
-[The viewer](docs/viewer.md) describes every screen, and how to show the spec on a development server for the rest of the team.
+[The viewer](docs/viewer.md) shows every screen, and says how to show the spec on a development server for the rest of the team.
 
 ## Upgrading
 
