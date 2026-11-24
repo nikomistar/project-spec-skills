@@ -456,7 +456,7 @@ const queue = {
   const block = () => findAll(v.page(), e => has(e, 'reviews'))[0];
   const row = name => findAll(block(), e => has(e, 'row')).find(r => findAll(r, e => e.tag === 'b')[0].textContent === name);
   assert.deepEqual(findAll(block(), e => has(e, 'row')).map(r => findAll(r, e => e.tag === 'b')[0].textContent),
-    ['Map', 'Security', 'Abuse', 'Validation', 'Data', 'API', 'UI', 'Failure paths', 'Texts'], 'the map, the seven reviews the skill has, then a topic of the person\'s own');
+    ['Map', 'Security', 'Abuse', 'Validation', 'Data', 'Logic', 'Flows', 'API', 'UI', 'Failure paths', 'Texts'], 'the map, the nine reviews the skill has, then a topic of the person\'s own');
   assert.ok(text(row('Map')).includes('3 of 4 features finished (75%)'));
   assert.ok(text(row('Map')).includes('1 in progress'));
   assert.ok(v.btn(row('Map'), 'Copy request to continue'), 'an unfinished map offers the request that continues it');
@@ -544,7 +544,7 @@ const queue = {
 {
   const v = load({ title: 'Sample vault', nodes: [node({ id: 'users', title: 'Users', type: 'note', layer: 'spec', status: 'current', path: 'notes/users.md' })], edges: [] });
   const rows = findAll(findAll(v.page(), e => has(e, 'reviews'))[0], e => has(e, 'row'));
-  assert.deepEqual(rows.map(r => findAll(r, e => e.tag === 'b')[0].textContent), ['Security', 'Abuse', 'Validation', 'Data', 'API', 'UI', 'Failure paths']);
+  assert.deepEqual(rows.map(r => findAll(r, e => e.tag === 'b')[0].textContent), ['Security', 'Abuse', 'Validation', 'Data', 'Logic', 'Flows', 'API', 'UI', 'Failure paths']);
   assert.ok(rows.every(r => text(r).includes('Not run yet')));
 }
 

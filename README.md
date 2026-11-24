@@ -161,6 +161,8 @@ The map raises the doubts it meets on the way. A review is a separate pass for o
 | `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
 | `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
 | `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
+| `its logic` | Rules that disagree with each other, a state, role or plan nobody decided for, what happens at the limit and to the last admin, what a plan or price change does to what already exists. |
+| `its flows` | What lies between features: a state the next feature does not know, a link that leads nowhere, a step left in the middle, waiting for someone who never answers. |
 | `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |
 | `its UI` | Missing loading, empty and error states, the same control built twice, one thing under two names. |
 | `failure paths` | What happens when a job or another service fails: retries, half-done work, errors nobody sees. |

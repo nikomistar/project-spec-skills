@@ -1,6 +1,6 @@
 # Reviewing one topic
 
-A map says what the product does. A review goes through the same product again with one topic in mind (is it safe, do the form and the server check the same things, is its API in order) and a fixed list of questions, so that nothing is skipped because it looked fine. It is a separate pass that a person asks for by name. It opens every entry point in its scope again, so it costs about as much reading as the features it covers; do one topic per pass.
+A map says what the product does. A review goes through the same product again with one topic in mind (is it safe, do the form and the server check the same things, do its rules agree with each other, is its API in order) and a fixed list of questions, so that nothing is skipped because it looked fine. It is a separate pass that a person asks for by name. It opens every entry point in its scope again, so it costs about as much reading as the features it covers; do one topic per pass.
 
 A review leaves three things:
 
@@ -119,6 +119,36 @@ Gaps get `topic: "data"`. For every kind of record the product keeps (take them 
 8. **History.** Is it recorded who changed what and when, where the product promises it? Can a change be undone?
 9. **Changes of the schema.** A column a migration added that old rows leave empty, with code that assumes a value.
 10. **Leaving.** What happens to a person's or a team's data when the account is deleted, and to what others still need (invoices, shared records)?
+
+## Logic
+
+Gaps get `topic: "logic"`. The other reviews ask whether a rule is enforced. This one reads the rules themselves: where two of them disagree, and what the product never decided. Start from the numbered rules on the feature's page and from the code that decides (every condition, every comparison with a limit, every refusal), with the reference notes for the roles, the plans and the states of a record beside you: most of what this review finds is a case one of those lists has and the code has no answer for.
+
+1. **Rules that disagree.** Is the same thing decided differently in two places: a pickup this feature lets a customer cancel and another refuses, a limit of 5 here and 10 there, a role that may do it from one screen and not from another? Compare the feature's rules with the rules of every page that names the same record or action.
+2. **A case nobody decided.** Where the code branches on a state, a role, a plan or a type, go through every value the list has. Which have no branch of their own, and what happens to them: the same as the last branch, nothing, an error? A trial that ended, a member who was suspended, a record that was archived.
+3. **At the edge.** Exactly at the limit: is the fifth allowed or refused, and does the message say the same number? Zero and one: an order with no lines, a team with no members. And the last one: can the last admin be removed, the only owner leave, the default item be deleted?
+4. **Acting on oneself.** Can a person take away their own role, delete an account that still owns things, approve their own request, invite or pay themselves? Is that meant?
+5. **One rule in two places.** A price, a total, a discount, a due date, "may this person do it": is it worked out once, or again in each client, in the list and on the record's page, on the server and in a job? Are the formula and the order the same (the discount before the tax, or after it)?
+6. **Rules about time.** Something that ends, expires or falls due: what makes it happen, a job or the next time somebody looks? What is true between the moment and the job? Is the last day inside or outside?
+7. **What changed afterwards.** A rule was checked when the record was made, and then the plan, the role, the price or a setting changed: a team of 8 on a plan that now allows 5, a record owned by someone whose role was taken away, an order made at the old price. Does the code say what happens, and does it read the value of then or of now?
+
+`priority` is `high` when a person can lose money, access or work, or the product can be left where nobody may act (no admin, no owner); `medium` when it takes an unusual case; `low` otherwise. `kind` is `conflict` when two places disagree, `product-gap` when a rule the feature states does not hold in one case, and `knowledge-gap` when the code does something in a case and you cannot tell whether that was decided or only happens.
+
+## Flows
+
+Gaps get `topic: "logic"`; give the run page `review: "flows"`. Every other review reads one feature and stops where it ends. What a person came to do takes several of them (sign up, set up, invite, pay, cancel), and each is written as if the one before had gone well. This review reads what lies between them.
+
+Go one feature at a time like any review, and start at its edges: every way a person arrives (a link, a redirect, an email, a button on another screen), every way they leave, and every record it passes on. Follow each to the feature on the other side and read that code too; the page of one feature does not say what the next one expects. A gap that lies between two features is one gap that names both.
+
+1. **What it needs first.** What must already exist for the feature to work: a team, a proven email, a payment method, a setting another feature fills in? Can a person get here without it: a new account, a link straight to the screen, an invite accepted before the profile was finished? What do they see: the way to the missing step, an empty screen, an error?
+2. **What it hands on.** For each state the feature can leave a record in: which features take the record next, and does each know every one of those states? A payment made and not yet confirmed, an invite sent and not accepted, a draft. Look at the lists, the dashboards, the jobs and the emails that read the record.
+3. **The ways out.** Every link, redirect, button and message that leads out of the feature: does the place exist, and does it let the person in as they arrive (not signed in, with another role, on another device, a day later)? Is there a state from which no person and no job can move the record on?
+4. **Left in the middle.** A person closes the page after the second step, the link runs out, the payment is abandoned. Can they go on from where they were? Does what they left stand in their way (an email taken by an account that was never finished)? Who else sees the half-made thing?
+5. **Going back.** After each step, can it be undone or cancelled? What becomes of what the later steps already did: the invites sent, the money taken, the records made for it?
+6. **Waiting.** Where the next step belongs to another person or another system (an approval, an invite to accept, a payment to be confirmed, a job): what does each side see meanwhile? When it never comes, does it run out, is anyone reminded, can it be withdrawn? And when it comes late, after the request was cancelled or answered by someone else?
+7. **In another order.** A person opens the third step by its address, presses Back after the last one, has the same flow open in two tabs, or does a step twice. What do they see, and what is made twice? Whether the server refuses a skipped step is the business of [a security review](#security); write a gap for one you meet, with `topic: "security"`.
+
+`priority` is `high` when a person is left with no way on (they paid and cannot get in, they cannot finish signing up) or pays for what they did not get; `medium` when there is a way round; `low` otherwise. `kind` is `product-gap` when one feature leaves a state the next does not handle, `conflict` when two features say different things about the same step, `product-plan` for a step the product has nowhere (no way to withdraw an invite), and `knowledge-gap` when you cannot tell.
 
 ## Failure paths
 
