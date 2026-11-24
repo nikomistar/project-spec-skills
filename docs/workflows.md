@@ -143,7 +143,8 @@ as its own gap with topic security, and tell me how many features you reviewed.
 
 | Topic | What it asks |
 | --- | --- |
-| `security` | Who can reach each entry point and where the server checks it, whose record it is, which fields may be changed, what comes back, what is done with input, files, sign-in and recovery, secrets, webhooks, jobs, what is sent out, money. |
+| `security` | Who can reach each entry point and where the server checks it, whose record it is, another way to the same action that skips the check, steps that can be skipped, which fields may be changed, what comes back, what is done with input, who can fetch a file, sign-in and recovery, secrets, webhooks, jobs, what is sent out, money. |
+| `abuse` | What a signed-in member can do too much of, followed from the request to where it ends up: how big a text, a list, an import or a file may be, what one request costs the server, what the server believes because the caller said it, how many and how often per account, what goes to storage past the server, paid work, how many messages it can make the product send and how often one person gets them, what a failed upload leaves behind, what other people are served. |
 | `validation` | The same field in the form, on the server and in the database: a check only the form has, different limits, required in one place and optional in another, an import or an admin screen that skips the rules, a refusal that does not say which field. |
 | `data` | The states of each kind of record, what a delete leaves behind, several writes with no transaction, two people saving at once, rules kept only in code, copies of one fact, money and time zones. |
 | `api` | Endpoints nothing calls, clients calling what does not exist, two ways to do one thing, calls marked as outdated and still used, unchecked input, inconsistent names and errors, a written contract that disagrees with the code, calls out without a timeout. |

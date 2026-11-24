@@ -157,7 +157,8 @@ The map raises the doubts it meets on the way. A review is a separate pass for o
 
 | Ask for | What it looks for |
 | --- | --- |
-| `security` | Who can reach each entry point, whose record it is, which fields may be changed, what comes back, files, sign-in, secrets. |
+| `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
+| `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
 | `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
 | `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
 | `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |

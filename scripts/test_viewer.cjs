@@ -456,7 +456,7 @@ const queue = {
   const block = () => findAll(v.page(), e => has(e, 'reviews'))[0];
   const row = name => findAll(block(), e => has(e, 'row')).find(r => findAll(r, e => e.tag === 'b')[0].textContent === name);
   assert.deepEqual(findAll(block(), e => has(e, 'row')).map(r => findAll(r, e => e.tag === 'b')[0].textContent),
-    ['Map', 'Security', 'Validation', 'Data', 'API', 'UI', 'Failure paths', 'Texts'], 'the map, the six reviews the skill has, then a topic of the person\'s own');
+    ['Map', 'Security', 'Abuse', 'Validation', 'Data', 'API', 'UI', 'Failure paths', 'Texts'], 'the map, the seven reviews the skill has, then a topic of the person\'s own');
   assert.ok(text(row('Map')).includes('3 of 4 features finished (75%)'));
   assert.ok(text(row('Map')).includes('1 in progress'));
   assert.ok(v.btn(row('Map'), 'Copy request to continue'), 'an unfinished map offers the request that continues it');
@@ -467,6 +467,7 @@ const queue = {
   assert.ok(text(row('Validation')).includes('1 of 2 features, not finished'));
   assert.ok(text(row('Data')).includes('Not run yet'));
   assert.ok(v.btn(row('Failure paths'), '1 open gap'), 'the gaps of a failure review have the topic ops');
+  assert.ok(text(row('Abuse')).includes('Not run yet') && v.btn(row('Abuse'), '1 open gap'), 'the gaps of an abuse review have the topic security');
   assert.ok(text(row('Texts')).includes('Last run 2026-11-04'), 'a run page named <date>-review-<topic> is a review; one that only ends in -review is not');
   v.btn(row('Data'), 'Copy request').click();
   assert.ok(v.copied.at(-1).startsWith('Use the project-knowledge skill in review mode: review the product for data. Go by the inventory file'));
@@ -508,7 +509,7 @@ const queue = {
 {
   const v = load({ title: 'Sample vault', nodes: [node({ id: 'users', title: 'Users', type: 'note', layer: 'spec', status: 'current', path: 'notes/users.md' })], edges: [] });
   const rows = findAll(findAll(v.page(), e => has(e, 'reviews'))[0], e => has(e, 'row'));
-  assert.deepEqual(rows.map(r => findAll(r, e => e.tag === 'b')[0].textContent), ['Security', 'Validation', 'Data', 'API', 'UI', 'Failure paths']);
+  assert.deepEqual(rows.map(r => findAll(r, e => e.tag === 'b')[0].textContent), ['Security', 'Abuse', 'Validation', 'Data', 'API', 'UI', 'Failure paths']);
   assert.ok(rows.every(r => text(r).includes('Not run yet')));
 }
 

@@ -601,11 +601,12 @@ class GapLayerTests(Fixture):
         self.assertIn('open gaps by topic: security 2 (1 high), no topic 1', lines)
         reviews = [line.strip() for line in lines[lines.index('reviews:') + 1:]]
         self.assertEqual(reviews[0], 'security   started 2026-11-14, 1 of 3 features, not finished; ' + at + 'runs/sec.md; 2 open gaps with topic security')
-        self.assertEqual(reviews[1], 'validation not run; 0 open gaps with topic validation')
-        self.assertEqual(reviews[5], 'failures   not run; 0 open gaps with topic ops')
-        self.assertEqual(reviews[6], 'texts      last run 2026-01-03; ' + at + 'runs/2026-01-03-review-texts.md; 0 open gaps with topic texts',
-                         'a topic of the person\'s own is listed after the six; a page that only ends in -review is not a review')
-        self.assertEqual(len(reviews), 7)
+        self.assertEqual(reviews[1], 'abuse      not run; 2 open gaps with topic security', 'an abuse review writes security gaps')
+        self.assertEqual(reviews[2], 'validation not run; 0 open gaps with topic validation')
+        self.assertEqual(reviews[6], 'failures   not run; 0 open gaps with topic ops')
+        self.assertEqual(reviews[7], 'texts      last run 2026-01-03; ' + at + 'runs/2026-01-03-review-texts.md; 0 open gaps with topic texts',
+                         'a topic of the person\'s own is listed after the seven; a page that only ends in -review is not a review')
+        self.assertEqual(len(reviews), 8)
         # without an inventory file the map's progress is unknown, and said to be
         (self.vault / '.knowledge/inventory.md').unlink()
         self.assertIn('map: no inventory file', self.run_cli('summary')[1])

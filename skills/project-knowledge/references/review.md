@@ -14,7 +14,7 @@ It never changes application code and never decides a gap.
 
 A review reads code. It runs no scanner, no test and no application, like every other pass of this skill.
 
-- Known vulnerabilities in dependencies, outdated packages, secrets in the Git history and a misconfigured server are found by tools, not by reading. Name the tool under "Not covered" in the report (`npm audit`, `pip-audit`, `osv-scanner`, a secret scanner). Run one only when the person asks.
+- Known vulnerabilities in dependencies, outdated packages, secrets in the Git history and the settings of what is deployed are found by tools, not by reading. Name the tool under "Not covered" in the report (`npm audit`, `pip-audit`, `osv-scanner`, a secret scanner). Run one only when the person asks. Settings the repository holds (a storage bucket, a queue or a function declared in a file) are code, and are read.
 - It is not a penetration test and not a certificate. "No gaps found" means the questions below found nothing in the code that was read. Say it that way, never "the product is secure".
 
 ## The pass
@@ -45,23 +45,48 @@ The rules in [gaps.md](gaps.md) apply. A review adds these:
 
 ## Security
 
-Gaps get `topic: "security"`. Ask these of every entry point.
+Gaps get `topic: "security"`. This review asks who may do what. How big, how often and at what cost a person who may do it can do it is the business of [an abuse review](#abuse); write a gap for one you meet, and leave the questions to that pass. Ask these of every entry point.
 
-1. **Who can reach it?** Nobody signed in, anyone signed in, one role? Find the check on the server. A menu that hides the link and a redirect in the client are not a check.
+1. **Who can reach it?** Nobody signed in, anyone signed in, one role? Find the check on the server: that a request without a session is refused, and that each role the client tells apart is told apart there too. A menu that hides the link and a redirect in the client are not a check.
 2. **Whose record is it?** When the request carries an id, does the server check that the record belongs to the caller, their team or their tenant? Is every list filtered by the caller on the server?
-3. **What may be changed?** Which fields does it accept? Can the caller set one they must not: role, owner, tenant, price, balance, status, a "verified" flag? Look for a request body passed whole into an update.
-4. **What comes back?** Fields the caller should not see: password hashes, tokens, other people's contact details, internal notes. Does an error tell whether an account or a record exists?
-5. **What is done with the input?** Is raw input put into a query, a shell command, a file path, HTML shown to other people, a URL the server fetches, or a redirect target? Are size and count limited?
-6. **Files.** Are type and size checked on the server? Where are uploads kept, who can fetch them, can a name be guessed?
-7. **Signing in and recovery.** Is the number of attempts limited for sign-in, reset, invite and code entry? How long does a reset, invite or sign-in link live, and does it work twice? What ends a session: a password change, a removed role?
-8. **Secrets.** A key in client code or in the repository, a secret written to a log, a token in a URL.
+3. **Is there another way to it?** The same record or action through an older version of the call, an admin, internal or debug route, a live channel a client subscribes to, the mobile app's endpoint, an import or a job: does each apply the check the main way applies? A way in that skips it is a gap.
+4. **What may be changed?** Which fields does it accept? Can the caller set one they must not: role, owner, tenant, price, balance, status, a "verified" flag? Look for a request body passed whole into an update.
+5. **What comes back?** Fields the caller should not see: password hashes, tokens, other people's contact details, internal notes. Does an error tell whether an account or a record exists?
+6. **What is done with the input?** Is raw input put into a query, a shell command, a file path, HTML shown to other people, a URL the server fetches, or a redirect target?
+7. **Files and exports.** Where is a file a person uploaded, or one the product made for them, kept? Who can fetch it, and can its address be guessed?
+8. **Steps that can be skipped.** Where an action takes several steps (pay, then confirm; prove an email, then get in; accept an invite, then get a role), does the server check at the last step that the earlier ones happened, or does it take the client's word?
+9. **Signing in and recovery.** Is the number of attempts limited for sign-in, reset, invite and code entry? How long does a reset, invite or sign-in link live, and does it work twice? What ends a session: a password change, a removed role?
+10. **Secrets.** A key in client code or in the repository, a secret written to a log, a token in a URL.
 
 And by kind of entry point:
 
-9. **What another system calls.** Is the sender proven (a signature, a shared secret)? Can the same call be replayed?
-10. **What runs on its own.** With whose rights does the job act? Does it cross tenants? Does it trust records that users control?
-11. **What the product sends out.** Is the address taken from the request? Does the message carry another person's data, or a link with a token?
-12. **Money and what cannot be undone.** Does the amount come from the client? Is a repeated request safe? Is there a confirmation?
+11. **What a browser calls.** When the session is kept in a cookie: is a request that changes something protected against being sent from another site (a token, `SameSite`)? Which sites may call with the cookie (CORS)? Is the cookie kept from scripts and sent only over HTTPS? Calls between servers have none of this; the next question is theirs.
+12. **What another system calls.** Is the sender proven (a signature, a shared secret)? Can the same call be replayed?
+13. **What runs on its own.** With whose rights does the job act? Does it cross tenants? Does it trust records that users control?
+14. **What the product sends out.** Is the address taken from the request? Does the message carry another person's data, or a link with a token?
+15. **Money and what cannot be undone.** Does the amount come from the client? Is a repeated request safe? Is there a confirmation?
+
+## Abuse
+
+Gaps get `topic: "security"`; give the run page `review: "abuse"`. A security review asks who may do a thing. This one asks what a person who may do it can do too much of: send something too big, do it too often, or send something that is not what it says. Read every entry point as an ordinary member with an account of their own, not as an outsider.
+
+Three things differ from the other passes:
+
+- **Start from what a caller can send**, feature by feature: a text, a request body, a list, an imported table, a file. Ask each question of each of them. A question the product has nothing for (it takes no files, it pays no other service) is skipped, and the run page says which were skipped and why.
+- **Follow it to where it ends**, not only to the code that receives it: the table, the queue, the job that works on it, the storage, the address other people fetch it from. Most of what this review finds lies between two of these, where each part takes the other to have checked.
+- **Read the settings the repository holds** for those places (a bucket, a queue, a function, a delivery address, declared in a Terraform, CDK, serverless or compose file): what is public, who may write. What is set up outside the repository goes under "Not covered".
+
+1. **How big.** For each thing a caller sends, is there a maximum: the length of a text, the size of a body, the items of a list, the rows of an import, the depth of nested data, the bytes of a file, the pixels of an image? Is it applied before the server has read the whole thing?
+2. **What one request costs.** Does it read a whole file, list or table into memory, go through every item, query without a page size, run a pattern or a search the caller wrote, or resize, convert or unpack something? Does one action become many (a message to every member of a group, a job for each row)? Is there a limit on time? Could one request, or a few at once, stop the server for everyone else?
+3. **Said or checked.** What does the server believe because the caller said it: a type, a size, a count, a name, a total? Does what was said choose how the thing is handled (which parser, which decoder, which queue)?
+4. **How many and how often.** What limits how many records, links, invites, exports or uploads one account makes, in an hour and in all? Is the limit counted for the account, or only for the address the request comes from? Does it hold when several requests arrive at once, or is the count read first and the record written after? What a member sets to run on its own (a schedule, a rule, a webhook of their own): how many may there be, and how often may each run?
+5. **Past the server.** Does anything reach storage or another service without passing the server: a signed link to upload with, a client that holds a key? What does the link fix (the place, the type, the size, how long it works), and which of the limits above still hold on that way?
+6. **Paid work.** Which requests make the product pay: a message sent, a conversion, a moderation or AI call, storage kept? What limits them for one account, and is there a ceiling for all accounts together?
+7. **What is sent.** How many emails, texts or notifications can one account make the product send, and to whom: only to people who agreed, or to any address it types? Can it put words or a link of its own into them? How often can one person get the same message: is a reminder, a digest or a retry sent once, or again on every run until something stops it?
+8. **What is left behind.** What happens to what was refused, or failed on the way: is it deleted, or kept and still reachable? What does an action leave that was started and never finished?
+9. **What other people get.** Is what one person sent given to others as it arrived? From which address, as which type, and can it be a page with a script on the product's own domain?
+
+`priority` is `high` when one account can stop the product for everyone, make it pay or send messages without a limit, or put a page of its own on the product's domain; `medium` when the harm has a bound (one account fills its own storage, a job runs late); `low` otherwise. `kind` is `product-gap` when a limit the product applies in one place is absent in another, and `product-plan` for a limit it has nowhere.
 
 ## Validation
 
