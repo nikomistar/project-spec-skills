@@ -744,6 +744,13 @@
         color: var(--notice-ink);
         border-color: var(--notice-line);
       }
+      .row .errs {
+        flex: 1 1 100%;
+        margin: 0 0 6px;
+        padding-left: 18px;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
       .row {
         display: flex;
         flex-wrap: wrap;
@@ -2708,6 +2715,17 @@
           if (!changedSources.has(m[1])) changedSources.set(m[1], []);
           changedSources.get(m[1]).push(m[2]);
         });
+        // What `check` reports about the spec. The pages are shown all the same; this is everything there is to fix,
+        // page by page, so that nobody learns of the next error only after fixing the first.
+        const specErrors = [];
+        (Array.isArray(data.errors) ? data.errors : []).forEach((e) => {
+          const m = /^(.+?\.md): ([\s\S]*)$/.exec(String(e)),
+            path = m ? m[1] : "",
+            found = specErrors.find((x) => x.path === path);
+          if (found) found.texts.push(m ? m[2] : String(e));
+          else specErrors.push({ path, texts: [m ? m[2] : String(e)] });
+        });
+        const errorCount = specErrors.reduce((sum, x) => sum + x.texts.length, 0);
         const rereads = nodes
           .filter((n) => changedSources.has(n.path) || n.stale === true)
           .sort((a, b) => String(a.path).localeCompare(String(b.path)));
@@ -2729,7 +2747,7 @@
           links.replaceChildren();
           [
             ["Overview", "", "home"],
-            ["Recent changes", rereads.length ? rereads.length + " to re-read" : newCommits ? newCommits + " new" : "", "changes"],
+            ["Recent changes", errorCount ? plural(errorCount, "error") : rereads.length ? rereads.length + " to re-read" : newCommits ? newCommits + " new" : "", "changes"],
             ["Gaps", waitingGaps.length ? waitingGaps.length + " waiting" : "", "gaps"],
             ["Map", "", "map"],
           ].forEach(([label, meta, name]) => {
@@ -2931,6 +2949,17 @@
         function viewHome(view) {
           const box = el("div", null, "stack wide");
           box.append(header("Overview", projectTitle, "What the product does today, area by area."));
+          if (errorCount) {
+            const card = el("section", null, "card notice"),
+              head = el("div", null, "card-head");
+            card.id = "errors-note";
+            head.append(
+              el("div", "The spec has " + plural(errorCount, "error") + ". The pages are shown as they are.", "h2"),
+              button("Show " + (errorCount === 1 ? "it" : "them"), "btn", () => go({ name: "changes", id: "" })),
+            );
+            card.append(head);
+            box.append(card);
+          }
           if (areas.length) {
             const grid = el("div", null, "area-grid");
             areas.forEach((a) => grid.append(areaCard(a)));
@@ -3479,6 +3508,34 @@
           rereads
             .map((n) => "- " + repoPath(n) + (changedSources.has(n.path) ? " (changed: " + changedSources.get(n.path).join(", ") + ")" : ""))
             .join("\n");
+        const errorsBrief = () =>
+          "Use the project-knowledge skill. Its check command reports these errors in the spec. " +
+          "Fix each one on the page it names, change nothing else on that page, and run check again until it reports none.\n\n" +
+          specErrors
+            .flatMap((x) => x.texts.map((t) => "- " + (x.path ? repoPath({ path: x.path }) + ": " : "") + t))
+            .join("\n");
+        // Every error at once, grouped by the page it is on. A page that could not be read is not in the viewer.
+        function errorsCard() {
+          const card = el("section", null, "card notice"),
+            head = el("div", null, "card-head"),
+            copy = button(null, "btn accent", () => copyText(errorsBrief(), "Copied " + plural(errorCount, "error")));
+          card.id = "errors";
+          copy.append(icon(ICON.copy), document.createTextNode("Copy for AI"));
+          head.append(el("div", "The spec has " + plural(errorCount, "error"), "h2"), copy);
+          card.append(head);
+          specErrors.forEach((x) => {
+            const row = el("div", null, "row"),
+              grow = el("div", null, "grow"),
+              n = x.path ? pageByFile(x.path) : null,
+              list = el("ul", null, "errs");
+            grow.append(n ? button(n.title, "rowlink", () => openNode(n)) : el("b", x.path ? "Not shown" : "The whole spec"));
+            if (x.path) grow.append(el("span", x.path, "path"));
+            x.texts.forEach((t) => list.append(el("li", t)));
+            row.append(grow, list);
+            card.append(row);
+          });
+          return card;
+        }
         function viewChanges(view) {
           const box = el("div", null, "stack");
           box.append(
@@ -3497,6 +3554,11 @@
               show();
             }),
           );
+          if (errorCount)
+            box.append(
+              errorsCard(),
+              el("p", "What the check command reports, all of it. The pages are shown as they are; one marked Not shown could not be read at all.", "muted small"),
+            );
           const stale = rereads.filter((n) => inFilter(n.path));
           if (stale.length && changeFilter !== "new") {
             const card = el("section", null, "card notice"),

@@ -509,12 +509,20 @@ class GapLayerTests(Fixture):
         self.assertEqual(self.fetch(port, '/../repo/source.txt')[0], 404)
         self.assertEqual(self.fetch(port, '/', host='evil.example')[0], 403)
         self.assertEqual(self.fetch(port, '/', host='localhost:1')[0], 200)
-        # a broken vault is explained instead of failing
+        # a wrong page does not hide the spec: the viewer is shown, and carries what check reports
         self.note('notes/bad.md', 'bad', sources=['source.txt'], body='[[<absent>]]')
         status, page, _ = self.fetch(port)
         self.assertEqual(status, 200)
-        self.assertIn('The spec has 1 error', page)
-        self.assertIn('missing wikilink &lt;absent&gt;', page)
+        self.assertIn('knowledge-data', page)
+        self.assertIn('"errors": ["notes/bad.md: missing wikilink \\u003cabsent\\u003e"]', page)
+        self.assertIn('"id": "bad"', page)
+        # only a vault with no page that can be read is answered with the bare list
+        for file in self.vault.rglob('*.md'):
+            file.write_text('no properties <b>', encoding='utf-8')
+        status, page, _ = self.fetch(port)
+        self.assertEqual(status, 200)
+        self.assertIn('The spec has ', page)
+        self.assertIn('missing frontmatter', page)
         self.assertNotIn('knowledge-data', page)
 
     def git(self, *args):
@@ -751,9 +759,11 @@ class GapLayerTests(Fixture):
 
     def test_build_can_run_where_part_of_the_repository_is_missing(self):
         self.note('notes/m.md', 'm', sources=['source.txt', 'Dockerfile'])
-        status, _, err, data = self.built()
-        self.assertEqual((status, data), (1, None))
+        status, printed, err, data = self.built()
+        self.assertEqual(status, 0, 'the page is built, and says what is wrong')
         self.assertIn('source is missing or not a file', err)
+        self.assertEqual(data['errors'], ['notes/m.md: Dockerfile: source is missing or not a file'])
+        self.assertIn('build: 1 errors on 1 pages are listed on the page', printed)
         status, printed, err, data = self.built('--allow-missing-sources')
         self.assertEqual(status, 0)
         self.assertIn('build: 1 cited files are not in this folder, so nobody compared them with the pages: Dockerfile', printed)
@@ -766,7 +776,8 @@ class GapLayerTests(Fixture):
         (self.vault / 'notes/o.md').unlink()
         # a folder where a file should be is still an error, and so is the same vault for check
         (self.repo / 'Dockerfile').mkdir()
-        self.assertEqual(self.built('--allow-missing-sources')[0], 1)
+        status, _, _, data = self.built('--allow-missing-sources')
+        self.assertEqual((status, data['errors']), (0, ['notes/m.md: Dockerfile: source is missing or not a file']))
         (self.repo / 'Dockerfile').rmdir()
         self.assertEqual(self.run_cli('check')[0], 1)
         self.assertIn('only for build', self.refused('check', '--allow-missing-sources'))
@@ -818,10 +829,51 @@ class GapLayerTests(Fixture):
         for args in (['build'], ['check', '--out', 'x.html'], ['serve', '--with-sources'], ['check', '--source-url', 'https://x.example']):
             with self.subTest(args=args):
                 self.assertIn('build', self.refused(*args))
+        # one wrong page does not hide the spec: the page is built with every page that could be read, and lists the errors
         self.note('notes/bad.md', 'bad', sources=['source.txt'], body='[[<absent>]]')
+        self.note('notes/twice.md', 'n', sources=['source.txt'])
+        (self.vault / 'notes/unread.md').write_text('no properties', encoding='utf-8')
+        status, printed, err, data = self.built()
+        self.assertEqual(status, 0, err)
+        self.assertIn('missing wikilink <absent>', err)
+        self.assertEqual(sorted(data['errors']), ['notes/bad.md: missing wikilink <absent>', 'notes/twice.md: duplicate id n',
+                                                  'notes/unread.md: missing frontmatter'])
+        ids = [n['id'] for n in data['nodes']]
+        self.assertIn('bad', ids)
+        self.assertEqual(ids.count('n'), 1, 'of two pages with one id the viewer gets one')
+        self.assertIn('build: 3 errors on 3 pages are listed on the page', printed)
+        # check is still the gate, and a vault with no page that can be read has nothing to show
+        self.assertEqual(self.run_cli('check')[0], 1)
+        (self.root / 'site/spec.html').unlink()
+        for file in self.vault.rglob('*.md'):
+            file.write_text('no properties', encoding='utf-8')
         status, _, err, data = self.built()
         self.assertEqual((status, data), (1, None))
-        self.assertIn('missing wikilink <absent>', err)
+        self.assertIn('build: failed', err)
+
+    def test_every_problem_of_a_page_is_reported_at_once(self):
+        (self.vault / 'notes/many.md').write_text(
+            '---\nid: "Many Things"\ntitle: "T"\ntype: "note"\nstatus: "done"\nareas: []\nsources: []\n'
+            'updated: "2026-13-45"\ntags: [broken\nkind: "product-gap"\ntitle: "again"\n---\n', encoding='utf-8')
+        err = self.run_cli('check')[2]
+        mine = sorted(line.split('notes/many.md: ', 1)[1] for line in err.splitlines() if 'notes/many.md: ' in line)
+        self.assertEqual(len(mine), 7, err)
+        for part in ('invalid id', 'invalid or duplicate property (title)', 'kind is only valid on gap pages', 'note requires an area',
+                     'status must be one of', 'tags: Expecting', 'updated is not a real date'):
+            self.assertTrue(any(m.startswith(part) for m in mine), part + '\n' + err)
+        self.assertIn('check: failed, 7 errors on 1 pages', err)
+        # a gap with several things wrong says all of them, and nothing about what it could not read
+        (self.vault / 'notes/many.md').unlink()
+        (self.vault / 'gaps').mkdir(exist_ok=True)
+        (self.vault / 'gaps/g.md').write_text(
+            '---\nid: "g"\ntitle: "G"\ntype: "gap"\nareas: ["a"]\nsources: []\nupdated: "2026-11-14"\nkind: "bogus"\n'
+            'recheck: "confirmed"\ndecision: "accepted"\ndecided_by: "agent"\ntopic: "Security"\nrechecked_on: nope\n---\n', encoding='utf-8')
+        err = self.run_cli('check')[2]
+        mine = [line.split('gaps/g.md: ', 1)[1] for line in err.splitlines() if 'gaps/g.md: ' in line]
+        self.assertEqual(len(mine), 6, err)
+        for part in ('rechecked_on: Expecting', 'kind must be one of', "rechecked_by is required when recheck is 'confirmed'",
+                     "decided_on is required when decision is 'accepted'", "decided_by must be a person's name", 'topic must be one of'):
+            self.assertTrue(any(m.startswith(part) for m in mine), part + '\n' + err)
 
     def test_history_of_a_shallow_clone_leaves_out_the_commit_without_parents(self):
         k._history_cache.clear()

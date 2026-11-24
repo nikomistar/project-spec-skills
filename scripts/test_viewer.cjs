@@ -505,6 +505,41 @@ const queue = {
   assert.equal(words().value, '');
 }
 
+// A spec with errors is shown all the same, and lists every one of them: on the first page that there are some,
+// under Recent changes each of them, grouped by page, with a request for an agent that names them all.
+{
+  const v = load({
+    title: 'Sample vault',
+    vaultPath: 'project-spec',
+    errors: [
+      'notes/users.md: rule BR-USERS-03 is numbered twice (on this page); give the newer rule the next free one',
+      'notes/users.md: missing wikilink absent',
+      'notes/unread.md: missing frontmatter',
+      'Invalid source snapshot: expected object of note source maps',
+    ],
+    nodes: [node({ id: 'users', title: 'Users', type: 'note', layer: 'spec', status: 'current', path: 'notes/users.md' })],
+    edges: [],
+  });
+  const card = id => findAll(v.page(), e => e.id === id)[0];
+  assert.deepEqual(v.nav()[1], ['Recent changes', '4 errors']);
+  assert.ok(text(card('errors-note')).includes('The spec has 4 errors'));
+  v.btn(card('errors-note'), 'Show them').click();
+  const rows = findAll(card('errors'), e => has(e, 'row'));
+  assert.ok(text(card('errors')).startsWith('The spec has 4 errors'));
+  assert.deepEqual(rows.map(r => findAll(r, e => e.tag === 'li').map(text)), [
+    ['rule BR-USERS-03 is numbered twice (on this page); give the newer rule the next free one', 'missing wikilink absent'],
+    ['missing frontmatter'],
+    ['Invalid source snapshot: expected object of note source maps'],
+  ], 'every error, grouped by its page');
+  assert.ok(text(rows[1]).includes('Not shown') && text(rows[1]).includes('notes/unread.md'), 'a page that could not be read is named');
+  assert.ok(text(rows[2]).includes('The whole spec'));
+  v.btn(card('errors'), 'Copy for AI').click();
+  assert.ok(v.copied.at(-1).startsWith('Use the project-knowledge skill. Its check command reports these errors'));
+  assert.ok(v.copied.at(-1).includes('- project-spec/notes/users.md: missing wikilink absent\n- project-spec/notes/unread.md: missing frontmatter\n- Invalid source snapshot'));
+  v.btn(rows[0], 'Users').click();
+  assert.ok(v.page().textContent.includes('Users'), 'the page with the error opens');
+}
+
 // A vault without an inventory file or any review still says what can be checked.
 {
   const v = load({ title: 'Sample vault', nodes: [node({ id: 'users', title: 'Users', type: 'note', layer: 'spec', status: 'current', path: 'notes/users.md' })], edges: [] });

@@ -173,109 +173,140 @@ def gap_state(meta):
     return 'needs-recheck' if meta['recheck'] in {'not-checked', 'outdated'} else 'needs-decision'
 
 
-def validate_meta(meta):
-    """Raise ValueError with an author-facing message for the first frontmatter problem."""
-    missing = REQUIRED - meta.keys()
+def date_problem(key, value):
+    try:
+        check_date(key, value)
+    except ValueError as exc:
+        return [str(exc)]
+    return []
+
+
+def meta_problems(meta, unread=()):
+    """Every frontmatter problem of one page, as author-facing messages, so that one pass of fixing is enough.
+
+    unread: properties whose line could not be read. They are reported by the caller, so nothing is said here
+    about them being missing, and what cannot be judged without them is left for the next run.
+    """
+    out = []
+    missing = REQUIRED - meta.keys() - set(unread)
     if missing:
-        raise ValueError('missing properties: ' + ', '.join(sorted(missing)))
-    for key in STRINGS & meta.keys():
+        out.append('missing properties: ' + ', '.join(sorted(missing)))
+    for key in sorted(STRINGS & meta.keys()):
         if not isinstance(meta[key], str):
-            raise ValueError(f'{key} must be a string')
-    for key in ARRAYS & meta.keys():
+            out.append(f'{key} must be a string')
+    for key in sorted(ARRAYS & meta.keys()):
         if not isinstance(meta[key], list) or any(not isinstance(x, str) for x in meta[key]):
-            raise ValueError(f'{key} must be a string array')
-    for key in (STRINGS | ARRAYS) & meta.keys():
-        for value in (meta[key] if isinstance(meta[key], list) else [meta[key]]):
-            if CONTROL.search(value):
-                raise ValueError(f'{key} must not contain control characters (line breaks, tabs, U+0085, U+2028, U+2029)')
+            out.append(f'{key} must be a string array')
+    if out or REQUIRED - meta.keys():
+        return out  # the checks below read these properties
+    for key in sorted((STRINGS | ARRAYS) & meta.keys()):
+        if any(CONTROL.search(value) for value in (meta[key] if isinstance(meta[key], list) else [meta[key]])):
+            out.append(f'{key} must not contain control characters (line breaks, tabs, U+0085, U+2028, U+2029)')
     if not re.fullmatch(r'[a-z0-9-]+', meta['id']):
-        raise ValueError('invalid id')
+        out.append('invalid id')
     kind = meta['type']
     if not meta['title'].strip() or kind not in TYPES:
-        raise ValueError('invalid title or type; type must be one of ' + ', '.join(sorted(TYPES)))
-    check_date('updated', meta['updated'])
+        out.append('invalid title or type; type must be one of ' + ', '.join(sorted(TYPES)))
+    out += date_problem('updated', meta['updated'])
+    if kind not in TYPES:
+        return out  # which properties a page may have depends on its type
     if kind in {'note', 'gap', 'plan'} and not meta['areas']:
-        raise ValueError(f'{kind} requires an area')
+        out.append(f'{kind} requires an area')
     if kind == 'gap':
         if 'status' in meta:
-            raise ValueError('a gap must not have status; gaps use recheck and decision instead')
-        validate_gap(meta)
+            out.append('a gap must not have status; gaps use recheck and decision instead')
+        out += gap_problems(meta, unread)
     else:
         for key in GAP_ONLY:
             if key in meta:
-                raise ValueError(f'{key} is only valid on gap pages')
+                out.append(f'{key} is only valid on gap pages')
         if kind != 'plan':
             for key in GAP_PAGE_ONLY:
                 if key in meta:
-                    raise ValueError(f'{key} is only valid on gap and plan pages')
+                    out.append(f'{key} is only valid on gap and plan pages')
         if kind in {'area', 'note'}:
             for key in ('title', 'summary'):
                 if re.search(r'\[\[|\[[^\]\n]*\]\([^)\n]*\)', meta.get(key, '')):
-                    raise ValueError(f'{key} of a spec page must not contain links; describe the page in plain text')
-        if 'status' not in meta:
-            raise ValueError('missing properties: status')
+                    out.append(f'{key} of a spec page must not contain links; describe the page in plain text')
         allowed = SPEC_STATUSES if kind in {'area', 'note'} else NAV_STATUSES
-        if meta['status'] not in allowed:
+        if 'status' not in meta:
+            if 'status' not in unread:
+                out.append('missing properties: status')
+        elif meta['status'] not in allowed:
             hint = ''
             if meta['status'] in {'unverified', 'conflict'}:
                 hint = f"; '{meta['status']}' is no longer a status: record it as a gap under gaps/"
-            raise ValueError(f"status must be one of {', '.join(sorted(allowed))}{hint}")
-        if kind == 'note' and meta['status'] == 'current' and not meta['sources']:
-            raise ValueError('current note requires sources')
+            out.append(f"status must be one of {', '.join(sorted(allowed))}{hint}")
+        elif kind == 'note' and meta['status'] == 'current' and not meta['sources']:
+            out.append('current note requires sources')
     if 'access' in meta:
         if kind != 'note':
-            raise ValueError('access is only valid on note pages: it names who may use the feature the note describes')
-        if not meta['access'] or any(not x.strip() for x in meta['access']):
-            raise ValueError('access must name at least one role, or be left out when the code was not read for it')
+            out.append('access is only valid on note pages: it names who may use the feature the note describes')
+        elif not meta['access'] or any(not x.strip() for x in meta['access']):
+            out.append('access must name at least one role, or be left out when the code was not read for it')
     if 'review' in meta and (kind != 'run' or not re.fullmatch(r'[a-z0-9-]+', meta['review'])):
-        raise ValueError('review is only valid on run pages and names the topic that was reviewed, in lower case: "security"')
+        out.append('review is only valid on run pages and names the topic that was reviewed, in lower case: "security"')
     if 'parent' in meta and (kind != 'note' or not meta['parent'].strip()):
-        raise ValueError('parent is only valid on note pages and names the feature note this one is a part of')
+        out.append('parent is only valid on note pages and names the feature note this one is a part of')
     if kind == 'plan':
-        if not meta.get('gap', '').strip():
-            raise ValueError('plan requires gap: the id of the accepted gap it implements')
+        if not meta.get('gap', '').strip() and 'gap' not in unread:
+            out.append('plan requires gap: the id of the accepted gap it implements')
     elif 'gap' in meta:
-        raise ValueError('gap is only valid on plan pages')
+        out.append('gap is only valid on plan pages')
+    return out
 
 
-def validate_gap(meta):
+def validate_meta(meta):
+    """Raise ValueError with an author-facing message for the first frontmatter problem."""
+    problems = meta_problems(meta)
+    if problems:
+        raise ValueError(problems[0])
+
+
+def gap_problems(meta, unread=()):
+    out, known = [], {}
     for key, values in (('kind', KINDS), ('recheck', RECHECKS), ('decision', DECISIONS)):
         if key not in meta:
-            raise ValueError(f'gap requires {key} (one of {", ".join(values)})')
-        if meta[key] not in values:
-            raise ValueError(f'{key} must be one of {", ".join(values)}')
-    if meta['recheck'] == 'not-checked':
+            if key not in unread:
+                out.append(f'gap requires {key} (one of {", ".join(values)})')
+        elif meta[key] not in values:
+            out.append(f'{key} must be one of {", ".join(values)}')
+        else:
+            known[key] = meta[key]
+    if known.get('recheck') == 'not-checked':
         for key in ('rechecked_by', 'rechecked_on'):
             if key in meta:
-                raise ValueError(f"{key} must be absent while recheck is 'not-checked'")
-    else:
+                out.append(f"{key} must be absent while recheck is 'not-checked'")
+    elif 'recheck' in known:
         for key in ('rechecked_by', 'rechecked_on'):
-            if key not in meta:
-                raise ValueError(f"{key} is required when recheck is '{meta['recheck']}'")
-        if not meta['rechecked_by'].strip():
-            raise ValueError('rechecked_by must name a person, or be "agent"')
-        check_date('rechecked_on', meta['rechecked_on'])
-    if meta['decision'] == 'open':
+            if key not in meta and key not in unread:
+                out.append(f"{key} is required when recheck is '{meta['recheck']}'")
+        if 'rechecked_by' in meta and not meta['rechecked_by'].strip():
+            out.append('rechecked_by must name a person, or be "agent"')
+        if 'rechecked_on' in meta:
+            out += date_problem('rechecked_on', meta['rechecked_on'])
+    if known.get('decision') == 'open':
         for key in ('decided_by', 'decided_on'):
             if key in meta:
-                raise ValueError(f"{key} must be absent while decision is 'open'")
-    elif meta['decision'] in DECIDED:
+                out.append(f"{key} must be absent while decision is 'open'")
+    elif known.get('decision') in DECIDED:
         for key in ('decided_by', 'decided_on'):
-            if key not in meta:
-                raise ValueError(f"{key} is required when decision is '{meta['decision']}'")
+            if key not in meta and key not in unread:
+                out.append(f"{key} is required when decision is '{meta['decision']}'")
     if 'decided_by' in meta and (not meta['decided_by'].strip() or meta['decided_by'].strip().lower() == 'agent'):
-        raise ValueError("decided_by must be a person's name: an agent may not decide, only record what a person decided")
+        out.append("decided_by must be a person's name: an agent may not decide, only record what a person decided")
     if 'decided_on' in meta:
-        check_date('decided_on', meta['decided_on'])
+        out += date_problem('decided_on', meta['decided_on'])
     if 'created' in meta:
-        check_date('created', meta['created'])
+        out += date_problem('created', meta['created'])
     if 'topic' in meta and meta['topic'] not in TOPICS:
-        raise ValueError(f'topic must be one of {", ".join(TOPICS)}')
-    if meta['decision'] == 'duplicate':
-        if not meta.get('duplicate_of', '').strip():
-            raise ValueError("duplicate_of is required when decision is 'duplicate': give the id of the other gap")
-    elif 'duplicate_of' in meta:
-        raise ValueError("duplicate_of is only valid when decision is 'duplicate'")
+        out.append(f'topic must be one of {", ".join(TOPICS)}')
+    if known.get('decision') == 'duplicate':
+        if not meta.get('duplicate_of', '').strip() and 'duplicate_of' not in unread:
+            out.append("duplicate_of is required when decision is 'duplicate': give the id of the other gap")
+    elif 'decision' in known and 'duplicate_of' in meta:
+        out.append("duplicate_of is only valid when decision is 'duplicate'")
+    return out
 
 
 def has_conflict_markers(content):
@@ -370,6 +401,14 @@ def uncommitted_paths(repo):
     return found
 
 
+class PageProblems(ValueError):
+    """Everything that is wrong with one page's properties."""
+
+    def __init__(self, problems):
+        super().__init__(problems[0])
+        self.problems = problems
+
+
 def error_page(message):
     """The vault-relative page an error message is about, or None for vault-wide errors."""
     head = message.split(': ', 1)[0]
@@ -411,18 +450,26 @@ def load_vault(repo, vault, freshness=True, dirty=None, report=None, absent=None
             match = re.match(r'\A---\s*\n(.*?)\n---\s*(?:\n|$)', content, re.S)
             if not match:
                 raise ValueError('missing frontmatter')
-            meta = {}
+            meta, problems, unread = {}, [], set()
             for line in match.group(1).splitlines():
                 if not line.strip() or line.lstrip().startswith('#'):
                     continue
                 key, sep, value = line.partition(':')
-                if not sep or not re.fullmatch(r'[a-z_]+', key) or key in meta:
-                    raise ValueError('invalid or duplicate property')
-                meta[key] = json.loads(value.strip())
-            validate_meta(meta)
+                if not sep or not re.fullmatch(r'[a-z_]+', key) or key in meta or key in unread:
+                    problems.append('invalid or duplicate property' + (f' ({key.strip()[:40]})' if key.strip() else ''))
+                    continue
+                try:
+                    meta[key] = json.loads(value.strip())
+                except json.JSONDecodeError as exc:
+                    # Every line that cannot be read is named, so the page is fixed in one pass.
+                    unread.add(key)
+                    problems.append(f'{key}: {exc}')
+            problems += meta_problems(meta, unread)
+            if problems:
+                raise PageProblems(problems)
             notes.append({'meta': meta, 'path': rel, 'body': content[match.end():]})
         except (OSError, ValueError, json.JSONDecodeError) as exc:
-            errors.append(f'{rel}: {exc}')
+            errors += [f'{rel}: {problem}' for problem in (exc.problems if isinstance(exc, PageProblems) else [exc])]
             # The page still exists as a link target; only its own errors are real.
             ident = meta.get('id') if isinstance(meta, dict) else None
             failed[rel] = ident if isinstance(ident, str) and re.fullmatch(r'[a-z0-9-]+', ident) else None
@@ -1128,31 +1175,46 @@ def gap_lines(notes, state='open', topic='', priority='', area='', prefix=''):
     return lines + [f'gaps: {len(wanted)} listed']
 
 
-def page_payload(repo, vault, notes, edges, warnings, sources=True):
+def shown_notes(notes):
+    """The pages the viewer can show: every page that could be read. Of two pages with one id it shows the first."""
+    seen, out = set(), []
+    for note in notes:
+        if note['meta']['id'] not in seen:
+            seen.add(note['meta']['id'])
+            out.append(note)
+    return out
+
+
+def page_payload(repo, vault, notes, edges, warnings, sources=True, errors=()):
+    notes = shown_notes(notes)
     files = cited_files(repo, vault, notes)[0] if sources else {}
     graph, first = graph_of(notes, edges, warnings), added_dates(repo, vault)
     for node, note in zip(graph['nodes'], notes):
         # When a gap appeared: the day its page says, else the day the page was first committed, else unknown (a new page).
         node['added'] = note['meta'].get('created', '') or first.get(note['path'], '') if note['meta']['type'] == 'gap' else ''
     return graph | {
+        'errors': list(errors),  # what `check` reports; the pages are shown all the same, and the viewer lists these
         'vaultPath': Path(os.path.relpath(vault, repo)).as_posix(), 'files': files, 'map': map_state(vault),
         'history': vault_history(repo, vault), 'pending': vault_pending(repo, vault)}
 
 
 def live_page(repo, vault):
-    """The viewer for the vault as it is on disk right now, or a page listing what stops it from loading."""
+    """The viewer for the vault as it is on disk right now, with what `check` reports listed in it.
+
+    One wrong page must not hide the rest of the spec, so only a vault with no page that can be read is answered
+    with a bare list of what stops it from loading."""
     try:
         notes, edges, errors, warnings, _ = load_vault(repo, vault)
     except (OSError, ValueError) as exc:
         notes, errors = [], [str(exc)]
-    if errors:
+    if errors and not notes:
         items = ''.join(f'<li>{html.escape(message)}</li>' for message in errors)
         return ('<!doctype html><meta charset="utf-8"><title>Spec cannot be shown</title>'
                 '<body style="font:15px/1.5 system-ui,sans-serif;max-width:860px;margin:48px auto;padding:0 20px">'
                 f'<h1>The spec has {len(errors)} error{"s" if len(errors) != 1 else ""}</h1>'
                 '<p>Fix the pages below (the <code>check</code> command prints the same list), then reload.</p>'
                 f'<ul>{items}</ul></body>')
-    return viewer_html(page_payload(repo, vault, notes, edges, warnings) | {'live': True})
+    return viewer_html(page_payload(repo, vault, notes, edges, warnings, errors=errors) | {'live': True})
 
 
 def source_base(value, commit):
@@ -1164,7 +1226,7 @@ def source_base(value, commit):
     return value.replace('{commit}', commit).rstrip('/')
 
 
-def built_page(repo, vault, notes, edges, warnings, with_sources=False, source_url=''):
+def built_page(repo, vault, notes, edges, warnings, with_sources=False, source_url='', errors=()):
     """The viewer as one file to put on a server: the vault as it is now, with nothing read later.
 
     The text of cited repository files is left out unless asked for, because the file may be shown to people
@@ -1172,7 +1234,7 @@ def built_page(repo, vault, notes, edges, warnings, with_sources=False, source_u
     """
     head = run_git(repo, ['rev-parse', 'HEAD'])
     commit = '' if head.returncode else head.stdout.decode('ascii', errors='replace').strip()
-    payload = page_payload(repo, vault, notes, edges, warnings, with_sources) | {
+    payload = page_payload(repo, vault, notes, edges, warnings, with_sources, errors) | {
         'built': True, 'commit': commit, 'sourceUrl': source_base(source_url, commit) if source_url else ''}
     return viewer_html(payload), payload
 
@@ -1331,10 +1393,12 @@ def main(argv=None):
     for message in warnings:
         print('WARNING:', message, file=sys.stderr)
     counted = [w for w in warnings if not w.endswith(UNCOUNTED)]
-    if errors:
+    # A built page with errors in it is still the spec, and it lists them. `check` is the gate; build only shows.
+    shown_anyway = args.command == 'build' and errors and notes
+    if errors and not shown_anyway:
         pages = len({error_page(m) for m in errors if error_page(m)})
         print(f'{args.command}: failed, {len(errors)} errors on {pages} pages', file=sys.stderr)
-    if errors or (args.strict and counted):
+    if (errors and not shown_anyway) or (args.strict and counted):
         return 1
     if ignored:
         print(f'{args.command}: {len(ignored)} errors on {len({error_page(m) for m in ignored if error_page(m)})} other pages do not block this snapshot (run check to see them)', file=sys.stderr)
@@ -1343,13 +1407,17 @@ def main(argv=None):
         if out.is_dir() or out.resolve().is_relative_to(vault):
             parser.error('--out must be a file outside the vault: nothing is generated into the vault')
         try:
-            page, payload = built_page(repo, vault, notes, edges, warnings, args.with_sources, args.source_url)
+            page, payload = built_page(repo, vault, notes, edges, warnings, args.with_sources, args.source_url, errors)
         except ValueError as exc:
             parser.error(str(exc))
         atomic_write(out, page)
         files = len(payload['files'])
-        print(f'build: wrote {out} ({len(page.encode("utf-8")) // 1024} kB), {len(notes)} notes, {len(warnings)} warnings'
+        print(f'build: wrote {out} ({len(page.encode("utf-8")) // 1024} kB), {len(payload["nodes"])} notes, {len(warnings)} warnings'
               + (f', commit {payload["commit"][:7]}' if payload['commit'] else ''))
+        if errors:
+            pages = len({error_page(m) for m in errors if error_page(m)})
+            print(f'build: {len(errors)} errors on {pages} pages are listed on the page, under Recent changes; '
+                  'the pages that could be read are shown all the same. Run check first where a wrong page must stop the build')
         print('build: ' + (f'the text of {files} cited source files is inside the file; show it only to people who may read the repository'
                            if args.with_sources else 'cited source files are named but their text is not included (--with-sources adds it)'))
         if absent:
