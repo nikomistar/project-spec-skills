@@ -2,6 +2,8 @@
 
 A map says what the product does. A review goes through the same product again with one topic in mind (is it safe, do the form and the server check the same things, do its rules agree with each other, is its API in order) and a fixed list of questions, so that nothing is skipped because it looked fine. It is a separate pass that a person asks for by name. It opens every entry point in its scope again, so it costs about as much reading as the features it covers; do one topic per pass.
 
+A person may ask for every review at once. Then run them one after another, each as a pass of its own with its own run page: `flows` and `logic` first, then `security`, `abuse`, `validation`, `data`, `failures`, `api` and `ui`. Finish one before the next starts, so that each pass finds the gaps of the ones before it in the queue. On a product of more than about twenty features say, before you start, that this will not fit one session, and offer to take the reviews one per session in the same order.
+
 A review leaves three things:
 
 - **Rules the pages were missing.** What the code answers plainly (only an admin may open this, a file may be 10 MB at most) is a numbered rule on the feature's page, like any other rule.

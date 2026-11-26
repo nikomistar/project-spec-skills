@@ -142,6 +142,23 @@ matters as gaps with topic security, note the small things on the run page, and
 tell me how many features you reviewed.
 ```
 
+To have a small product (up to about twenty features) checked in one session, ask for all of them:
+
+```text
+Use the project-knowledge skill in review mode: run every review the guide has a
+list for, one topic per pass, each with its own run page. Start with flows and
+logic, then security, abuse, validation, data, failure paths, API and UI.
+
+Go by the inventory file, one feature at a time. Read the code and run nothing.
+Before writing a gap, look in the queue for one that already asks the question.
+Write what matters as gaps and note the small things on the run page.
+
+When all are done, tell me for each review how many features it covered, how
+many gaps it wrote by priority and how many things it noted.
+```
+
+On a bigger product run one review per session, one after another. Several agents reviewing one spec at the same time do not see each other's gaps and write the same question twice.
+
 | Topic | What it asks |
 | --- | --- |
 | `security` | Who can reach each entry point and where the server checks it, whose record it is, another way to the same action that skips the check, steps that can be skipped, which fields may be changed, what comes back, what is done with input, who can fetch a file, sign-in and recovery, secrets, webhooks, jobs, what is sent out, money. |

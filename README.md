@@ -41,21 +41,52 @@ If you run out of time, stop at the end of a feature and tell me how many
 features are finished, in progress and not started.
 ```
 
-**3. Read what it wrote:**
+This first map is the long run: from one to a few hours of agent time, more for a big product. To go on where a session stopped: `Use the project-knowledge skill and continue the map from the inventory file.`
+
+**3. Have it checked.** The map writes down what the product does and only the doubts it met on the way. The checks are a second request: nine [reviews](#reviews), each with a fixed list of questions. When the map is finished, paste this:
+
+```text
+Use the project-knowledge skill in review mode: run every review the guide has a
+list for, one topic per pass, each with its own run page. Start with flows and
+logic, then security, abuse, validation, data, failure paths, API and UI.
+
+Go by the inventory file, one feature at a time. Read the code and run nothing.
+Before writing a gap, look in the queue for one that already asks the question.
+Write what matters as gaps and note the small things on the run page.
+
+When all are done, tell me for each review how many features it covered, how
+many gaps it wrote by priority and how many things it noted.
+```
+
+That is for a product of up to about twenty features. For a bigger one, run [one review per session](#reviews), one after another.
+
+**4. Read what it wrote:**
 
 ```sh
 npx project-spec serve
 ```
 
-This first map is the long run: from one to a few hours of agent time, more for a big product. To go on where a session stopped: `Use the project-knowledge skill and continue the map from the inventory file.`
+The first page says how much is mapped and which reviews ran. The gap queue lists the questions, the most urgent first, with the low-priority ones folded away.
 
 The agent writes only Markdown in that folder. It does not change application code, commit or push. Other ways to install, and pinning one version for a team: [Install and update](docs/install.md).
 
 ## Reviews
 
-The map raises the doubts it meets on the way. A review is a separate pass for one topic: the agent goes through every way into the product again with a fixed list of questions, so nothing is skipped because it looked fine. What the code answers becomes a rule on the feature's page; each doubt becomes a gap with that topic.
+A review is a pass for one topic: the agent goes through every way into the product again with a fixed list of questions, so nothing is skipped because it looked fine. What the code answers becomes a rule on the feature's page. A doubt worth a decision becomes a gap with that topic; a small one is a line under "Noted" on the review's run page.
 
-Paste this, with the words from the first column in place of `security`:
+| Ask for | What it looks for |
+| --- | --- |
+| `its flows` | What lies between features: a state the next feature does not know, a link that leads nowhere, a step left in the middle, waiting for someone who never answers. |
+| `its logic` | Rules that disagree with each other, a state, role or plan nobody decided for, what happens at the limit and to the last admin, what a plan or price change does to what already exists. |
+| `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
+| `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
+| `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
+| `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
+| `failure paths` | What happens when a job or another service fails: retries, half-done work, errors nobody sees. |
+| `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |
+| `its UI` | Missing loading, empty and error states, the same control built twice, one thing under two names. |
+
+**One review.** Paste this, with the words from the first column in place of `security`:
 
 ```text
 Use the project-knowledge skill in review mode: review the product for security.
@@ -66,72 +97,24 @@ the small things on the run page, and tell me how many features you reviewed.
 
 If the session stops before the end: `Use project-knowledge to continue the security review from its run page.`
 
-| Ask for | What it looks for |
-| --- | --- |
-| `security` | Who can reach each entry point, whose record it is, another way in that skips the check, which fields may be changed, what comes back, sign-in, secrets. |
-| `abuse` | What one account can send too big or do too often, what the server believes because the caller said it, paid work and messages with no limit, what other people are served. |
-| `validation` | One field checked differently by the form, the server and the database; an import or an admin screen that skips the rules. |
-| `data` | States a record can get stuck in, what a delete leaves behind, writes with no transaction, two people saving at once. |
-| `its logic` | Rules that disagree with each other, a state, role or plan nobody decided for, what happens at the limit and to the last admin, what a plan or price change does to what already exists. |
-| `its flows` | What lies between features: a state the next feature does not know, a link that leads nowhere, a step left in the middle, waiting for someone who never answers. |
-| `its API` | Endpoints nothing calls, two ways to do one thing, calls marked as outdated, a written contract that disagrees with the code. |
-| `its UI` | Missing loading, empty and error states, the same control built twice, one thing under two names. |
-| `failure paths` | What happens when a job or another service fails: retries, half-done work, errors nobody sees. |
+**Which, and how many at once.**
 
-A review opens every entry point again, so it takes about as long as the map of the features it covers. Run one topic at a time, and name an area (`review the billing area for security`) to keep it short. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
+- **A small product** (up to about twenty features): all nine in one session, with the request under [Start](#start).
+- **A big one**: one review per session, one after another. Do not run several agents on one spec at the same time: they do not see each other's gaps and write the same question twice.
+- **Not every product needs all nine.** Begin with `its flows` and `its logic`. Add `security`, `abuse` and `validation` when the product has accounts and a server. An app with no server has little for `its API`.
+- **To keep one short**, name an area: `review the billing area for security`.
+
+A review opens every entry point again, so it takes about as long as the map of the features it covers, and all nine take several times that. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
 
 ## What you get
 
-A folder in your repository, `project-spec/` unless you name another:
+A folder of plain Markdown in your repository, `project-spec/` unless you name another. It also opens in Obsidian.
 
-```text
-project-spec/
-  areas/    one page per part of the product: a map of its features
-  notes/    one page per feature: what it is for, how it works, its numbered rules
-  gaps/     one page per question about the product
-  plans/    a plan for a gap a person accepted
-  runs/     what each pass read, and each review
-```
+**The spec** says only what the code does. Each part of the product ("Orders and checkout") has a page that lists its features. Each feature has one page with the same sections every time: what it is for, how it works, its fields, and its business rules as numbered rows with the real values: the limit, the message, who may do it. A rule keeps its number for good, so anyone can say "BR-CANCEL-02 is wrong" instead of describing a screen.
 
-It is plain Markdown and also opens in Obsidian. The two layers stay apart: a spec page says only what the code does, and a doubt is never written into it.
+![A feature page in the viewer: what the feature is for, how it works, and its business rules as numbered rows](docs/images/viewer-page.png)
 
-### The spec: areas, features, rules
-
-- **An area** is a part of the product as a person would name it: "Orders and checkout", "Accounts and access". Its page is a map: what the area covers, and one line per feature.
-- **A feature** has one page, with the same sections every time: what it is for and who uses it, how it works, its fields, its business rules. A feature too big for one page has parts.
-- **A rule** is one numbered row with the real values: the limit, the message, who may do it.
-
-```markdown
-# Only requested pickups are currently cancellable
-
-A customer who no longer needs a pickup cancels it, and the service lets that
-happen only before anyone has started work on it.
-
-## Business rules
-
-| ID | Rule |
-| --- | --- |
-| BR-CANCEL-01 | A pickup can be cancelled only while its state is `requested`. |
-| BR-CANCEL-02 | In any other state the cancellation is refused with "Only requested pickups can be cancelled" and nothing is changed. |
-```
-
-A rule keeps its number for good, so a reviewer, a tester or a support person can say "BR-CANCEL-02 is wrong" instead of describing a screen. A page can also say who may use the feature (`access: ["admin"]`). When a file a page relies on changes, the page is marked for re-reading.
-
-### Gaps: the questions
-
-A gap is one question about the product that a person can check and decide: *"Should a customer be able to cancel their own packed pickup?"* The agent writes one when the code is missing something, when two places disagree, or when it cannot tell whether a behavior is meant. The page says what the code does today, asks the question, gives the evidence, and then keeps its own recheck, discussion and decision.
-
-| State | What it means | Who moves it on |
-| --- | --- | --- |
-| Needs recheck | The agent wrote it; nobody has confirmed that it still describes the code. | An agent or a person rechecks it. |
-| Needs decision | Rechecked. It waits for an answer. | A person: accept, reject or defer. |
-| Accepted | Someone decided it should be done. A plan can be written for it. | Whoever builds it; it closes when the code answers it. |
-| Deferred | Not now. | A person, later. |
-| History | Done, rejected or a duplicate. | Kept, with the reason. |
-
-The agent proposes and rechecks; only a person decides, and the agent never records a decision nobody made. A closed gap is not deleted: the spec says what the code does, and the gap is the one place that says why.
-
-Expect many. On the two products this was first used on, the map left more than 150 gaps each, so every gap has two labels to read the queue by: its area, the part of the product it is about, and its topic, the kind of problem (`security`, `validation`, `data`, `logic`, `ui`, `api` or `ops`).
+**Gaps** are the questions, one per page: *"Should a customer be able to cancel their own packed pickup?"* The agent writes one when the code is missing something, when two places disagree, or when it cannot tell whether a behavior is meant, and it can recheck one against the code. Only a person decides: accept, reject or defer. A closed gap is kept with its reason, because the spec says what the code does and the gap is the one place that says why.
 
 ## Keep it current
 
@@ -156,6 +139,7 @@ This writes a short block into the file your agent reads at the start of a sessi
 | `npx project-spec coverage` | What the code has that no page mentions yet. |
 | `npx project-spec instructions --file AGENTS.md` | Ask every agent in the repository to keep the spec current ([above](#keep-it-current)). |
 | `npx project-spec move --to DIR` | Move the spec to another folder without breaking its links. |
+| `npx project-spec@latest update` | Refresh the installed skill. An older spec needs no conversion; [what each release changed](docs/install.md#upgrading-from-an-earlier-version). |
 
 ### Ask your agent
 
@@ -176,25 +160,7 @@ The request for a review is [above](#reviews). More prompts are in [Working with
 
 ## The viewer
 
-One local page, read from the files on disk. Nothing is built or uploaded, and it is not copied into your project.
-
-- **Read** a feature page: its purpose, its flow, its rules.
-- **Work the gaps**: the queue by state, with filters for area, topic, kind and priority and a field that finds a gap by its words.
-- **Ask**: "Copy for AI" turns a page and your own words into a request for your agent.
-- **See what was checked**: the first page shows how much is mapped and when each review last ran.
-
-![A feature page in the viewer: what the feature is for, how it works, and its business rules as numbered rows](docs/images/viewer-page.png)
-
-[The viewer](docs/viewer.md) shows every screen, and says how to show the spec on a development server for the rest of the team.
-
-## Upgrading
-
-```sh
-npx project-spec@latest update      # refresh every installed copy of the skill
-npx project-spec@latest check       # an older spec still passes; this lists anything to fix
-```
-
-Your spec needs no conversion: every release since 0.7.0 only added optional things to it. [Upgrading from an earlier version](docs/install.md#upgrading-from-an-earlier-version) says what each release changed and what to do.
+`npx project-spec serve` opens one local page, read from the files on disk. Nothing is built or uploaded, and it is not copied into your project. It shows the spec, the gap queue with its filters, and what was checked; "Copy for AI" turns a page and your own words into a request for your agent. [The viewer](docs/viewer.md) shows every screen, and says how to show the spec on a development server for the rest of the team.
 
 ## Read more
 
