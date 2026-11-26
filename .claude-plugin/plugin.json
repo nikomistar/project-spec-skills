@@ -1,6 +1,6 @@
 {
   "name": "project-spec",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Keep a spec of a repository that people can read: one page per feature, every business rule numbered, with a local viewer. Includes the project-knowledge skill.",
   "author": {
     "name": "Vadim Kuznecov",

@@ -322,11 +322,11 @@ const queue = {
   assert.equal(v.h1(), 'Gaps');
   assert.deepEqual(v.crumbs(), ['Sample vault', '/', 'Gaps']);
   const counts = () => findAll(v.page(), e => has(e, 'tab')).map(text);
-  assert.deepEqual(counts(), ['Open8', 'Needs recheck3', 'Needs decision3', 'Accepted1', 'Deferred1', 'History3'], 'the queue is the open work; closed gaps are under History');
-  assert.equal(v.rowTitles().length, 7, 'no closed gap in the queue, and the low-priority one is folded away');
+  assert.deepEqual(counts(), ['Open7', 'Needs recheck3', 'Needs decision3', 'Accepted1', 'Deferred1', 'History3'], 'the queue is the open work; a deferred gap has its own tab, closed gaps are under History');
+  assert.equal(v.rowTitles().length, 6, 'no closed or deferred gap in the queue, and the low-priority one is folded away');
   assert.ok(v.page().textContent.includes('1 low-priority gap is folded away.'));
   v.btn(v.page(), 'Show it').click();
-  assert.equal(v.rowTitles().length, 8, 'one press shows it');
+  assert.equal(v.rowTitles().length, 7, 'one press shows it');
   assert.ok(v.btn(v.page(), 'Fold the low-priority gaps'), 'and one more folds it again');
   // waiting states come first, each with the most urgent gap first (P1 before low, a gap without a priority last)
   assert.deepEqual(v.rowTitles().slice(0, 6), ['Gap recheck', 'Gap outdated', 'Legacy gap', 'Gap flagged', 'Gap derived', 'Gap decision']);
@@ -346,8 +346,11 @@ const queue = {
   v.tab(v.page(), 'Open').click();
   v.select('Kind').value = 'product-plan';
   v.select('Kind').fire('change');
-  assert.deepEqual(v.rowTitles(), ['Gap deferred']);
-  assert.deepEqual(counts(), ['Open1', 'Deferred1'], 'counts follow the other filters, and empty states are left out');
+  assert.deepEqual(v.rowTitles(), [], 'a deferred gap is not open work');
+  assert.deepEqual(counts(), ['Open0', 'Deferred1'], 'counts follow the other filters, and empty states are left out');
+  v.tab(v.page(), 'Deferred').click();
+  assert.deepEqual(v.rowTitles(), ['Gap deferred'], 'it is one tab away');
+  v.tab(v.page(), 'Open').click();
   v.select('Kind').value = '';
   v.select('Kind').fire('change');
   v.select('Area').value = 'areas/other';
@@ -365,7 +368,7 @@ const queue = {
   assert.deepEqual(counts(), ['Open1', 'Needs recheck1']);
   v.select('Priority').value = 'none';
   v.select('Priority').fire('change');
-  assert.equal(v.rowTitles().length, 4, 'the open gaps without a priority; three more are closed');
+  assert.equal(v.rowTitles().length, 3, 'the open gaps without a priority; one more is deferred and three are closed');
   assert.ok(!v.rowTitles().includes('Gap recheck'));
   v.select('Priority').value = '';
   v.select('Priority').fire('change');
@@ -1163,16 +1166,16 @@ assert.deepEqual(pres(article('```js\none\n```\n\ntext\n\n```\ntwo\n```').art), 
   const more = () => findAll(v.page(), e => has(e, 'more-row'))[0];
   v.btn(v.page(), 'Show it').click(); // the one low-priority gap of the queue, folded away at first
   assert.equal(v.rowTitles().length, 40);
-  assert.deepEqual(more().children.map(text), ['Show 40 more', '40 of 103']);
+  assert.deepEqual(more().children.map(text), ['Show 40 more', '40 of 102']);
   v.btn(more(), 'Show 40 more').click();
   assert.equal(v.rowTitles().length, 80);
-  assert.deepEqual(more().children.map(text), ['Show 23 more', '80 of 103']);
+  assert.deepEqual(more().children.map(text), ['Show 22 more', '80 of 102']);
   v.go('Overview');
   v.go('Gaps');
   assert.equal(v.rowTitles().length, 80, 'coming back to the queue keeps the place');
-  v.btn(more(), 'Show 23 more').click();
-  assert.equal(v.rowTitles().length, 103);
-  assert.deepEqual(more().children.map(text), ['103 of 103']);
+  v.btn(more(), 'Show 22 more').click();
+  assert.equal(v.rowTitles().length, 102);
+  assert.deepEqual(more().children.map(text), ['102 of 102']);
   v.tab(v.page(), 'Needs recheck').click();
   assert.equal(v.rowTitles().length, 40, 'another filter starts from the first portion');
   v.tab(v.page(), 'History').click();

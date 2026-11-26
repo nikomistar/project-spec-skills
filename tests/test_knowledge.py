@@ -590,6 +590,8 @@ class GapLayerTests(Fixture):
         self.note('gaps/role.md', 'role', 'gap', topic='security', priority='high', **gap)
         self.note('gaps/leak.md', 'leak', 'gap', topic='security', priority='low', review='abuse', **gap)
         self.note('gaps/plain.md', 'plain', 'gap', **gap)
+        self.note('gaps/later.md', 'later', 'gap', topic='security', priority='low',
+                  **(gap | {'decision': 'deferred', 'decided_by': 'Ann', 'decided_on': '2026-11-15'}))
         self.note('gaps/old.md', 'old', 'gap', topic='security', **(gap | {'decision': 'duplicate', 'duplicate_of': 'role'}))
         (self.vault / '.knowledge').mkdir(exist_ok=True)
         (self.vault / '.knowledge/inventory.md').write_text(
@@ -605,7 +607,7 @@ class GapLayerTests(Fixture):
         self.assertEqual((status, err), (0, ''), 'a report: no warnings, exit 0')
         lines = out.splitlines()
         self.assertIn('map: 2 of 4 features finished (50%), 1 in progress, 1 not started', lines)
-        self.assertIn('gaps: 3 open (needs recheck 3, needs decision 0, accepted 0, deferred 0), 1 closed', lines)
+        self.assertIn('gaps: 3 open (needs recheck 3, needs decision 0, accepted 0), 1 deferred, 1 closed', lines)
         self.assertIn('open gaps by topic: security 2 (1 high), no topic 1', lines)
         self.assertIn('open gaps by priority: high 1, low 1, none 1', lines)
         reviews = [line.strip() for line in lines[lines.index('reviews:') + 1:]]
@@ -632,7 +634,9 @@ class GapLayerTests(Fixture):
         self.assertIn(at + 'gaps/leak.md', self.run_cli('gaps', '--review', 'abuse')[1])
         self.assertEqual(self.run_cli('gaps', '--review', 'none')[1].splitlines()[-1], 'gaps: 2 listed')
         self.assertEqual(self.run_cli('gaps', '--state', 'closed')[1].splitlines()[-1], 'gaps: 1 listed')
-        self.assertEqual(self.run_cli('gaps', '--state', 'all')[1].splitlines()[-1], 'gaps: 4 listed')
+        self.assertEqual(self.run_cli('gaps', '--state', 'all')[1].splitlines()[-1], 'gaps: 5 listed')
+        self.assertEqual(self.run_cli('gaps', '--state', 'deferred')[1].splitlines()[-1], 'gaps: 1 listed',
+                         'a gap a person deferred is not open work: it is counted and listed on its own')
         # a broken page is left out and counted, and the report still answers
         self.note('gaps/bad.md', 'bad', 'gap', topic='Security', **gap)
         status, out, _ = self.run_cli('summary')

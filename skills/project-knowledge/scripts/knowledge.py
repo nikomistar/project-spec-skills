@@ -1080,7 +1080,8 @@ def review_of(note):
 
 
 def open_gaps(notes):
-    return [n for n in notes if n['meta']['type'] == 'gap' and n['state'] not in CLOSED]
+    """The gaps that wait for somebody: not closed, and not put off by a person (deferred)."""
+    return [n for n in notes if n['meta']['type'] == 'gap' and n['state'] not in CLOSED and n['state'] != 'deferred']
 
 
 def reviews_state(notes):
@@ -1131,8 +1132,8 @@ def summary_lines(repo, vault, notes, warnings):
     lines.append(f'pages: {partial} partial, {stale} with code changed since the last check')
     by_state = {s: sum(1 for g in gaps if g['state'] == s) for s in STATE_ORDER}
     closed = sum(by_state[s] for s in CLOSED)
-    lines.append(f"gaps: {len(gaps) - closed} open (needs recheck {by_state['needs-recheck']}, needs decision {by_state['needs-decision']}, "
-                 f"accepted {by_state['accepted']}, deferred {by_state['deferred']}), {closed} closed")
+    lines.append(f"gaps: {len(gaps) - closed - by_state['deferred']} open (needs recheck {by_state['needs-recheck']}, "
+                 f"needs decision {by_state['needs-decision']}, accepted {by_state['accepted']}), {by_state['deferred']} deferred, {closed} closed")
     topics = []
     for topic in [*TOPICS, '']:
         mine = [g for g in open_gaps(notes) if g['meta'].get('topic', '') == topic]
@@ -1166,7 +1167,7 @@ def gap_lines(notes, state='open', topic='', priority='', area='', prefix='', re
     wanted = []
     for g in (n for n in notes if n['meta']['type'] == 'gap'):
         m = g['meta']
-        if state == 'open' and g['state'] in CLOSED or state == 'closed' and g['state'] not in CLOSED:
+        if state == 'open' and (g['state'] in CLOSED or g['state'] == 'deferred') or state == 'closed' and g['state'] not in CLOSED:
             continue
         if state not in ('open', 'closed', 'all') and g['state'] != state:
             continue
@@ -1286,7 +1287,7 @@ def main(argv=None):
     parser.add_argument('--open', action='store_true', help='serve: open the page in the default browser')
     parser.add_argument('--out', type=Path, help='build: the HTML file to write, outside the vault')
     parser.add_argument('--to', type=Path, metavar='DIR', help='move: the folder of the repository the vault moves to')
-    parser.add_argument('--state', default='open', help='gaps: open (default), closed, all, or one state such as needs-decision')
+    parser.add_argument('--state', default='open', help='gaps: open (default; deferred gaps are left out), closed, all, or one state such as needs-decision or deferred')
     parser.add_argument('--topic', default='', help='gaps: one topic, or "none" for gaps without one')
     parser.add_argument('--priority', default='', help='gaps: one priority, or "none" for gaps without one')
     parser.add_argument('--area', default='', help='gaps: the id of one area')

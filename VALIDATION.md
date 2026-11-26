@@ -2,6 +2,14 @@
 
 > The entries below record what was checked at the time, in the terms of that time. Since then the five skills were merged into two (`spec-audit` and `spec-investigation` into `project-knowledge`, `spec-plan` into `spec-change`), the generated `AS-BUILT.md`, `GAPS.md` and `graph.html` were replaced by the viewer, and the `build` command was removed. None of that has been evaluated with a fresh agent yet. `spec-change` was never run on a real change and was removed in 0.11.0.
 
+## 2026-11-26: the long queue, thinned
+
+- Run by an agent with 0.18.0 on the product of the entry below, at its owner's request, as the three steps of "A queue too long to read". Step 1 closed 1 twin and 174 single gaps as duplicates of 30 new pattern gaps. Step 2 recorded the owner's one sentence ("I defer every low-priority gap of kind product-plan") on 222 gaps. Step 3 rechecked 17 high and 185 medium gaps. 772 gaps that waited became 404: 17 high, 185 medium, 187 low and 15 with no priority.
+- Read afterwards from the files: the counts match, the pattern gaps have a table of their places, and a sample of the rechecks names the files and lines that were read and says what was not run.
+- The recheck closed nothing: all 202 were confirmed. The code had not changed since the gaps were written, and a recheck asks only whether the page still describes the code. On a fresh queue it moves gaps to "needs decision" and removes none, so 202 decisions still wait for one person.
+- `summary` printed "627 open" after the run, with the 223 deferred gaps among them, and "low 409" with 222 of those deferred. 0.18.1: a deferred gap is not open. `summary` counts it apart, `gaps` leaves it out unless asked with `--state deferred`, and the viewer's Open tab and the counts beside each review leave it out; it stays under its own tab. Helper and viewer tests cover it; `python3 scripts/verify.py` passed.
+- **NOT RUN:** nobody has decided any of the 202 gaps. Whether 185 medium gaps are a queue a person reads, or whether `medium` needs an order of its own (by pattern, by area), is not known. The 30 pattern gaps were not read one by one for whether their places really share one decision.
+
 ## 2026-11-26: a queue nobody can read
 
 - Seen in real use: on a product with 82 features, the map and nine reviews left 772 open gaps, about 230,000 words: 18 high, 225 medium, 513 low and 16 with no priority. 386 of them are proposals (`product-plan`), and 55 had been rechecked. The owner said nobody will read it. One low proposal about a blog editor had a paragraph added by each of four reviews.

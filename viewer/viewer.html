@@ -1998,6 +1998,8 @@
           return STATES.includes(decision) ? decision : "needs-recheck";
         };
         const isClosed = (n) => CLOSED_STATES.includes(stateOf(n));
+        // Open work waits for somebody. A gap a person deferred is neither closed nor open: it has its own tab.
+        const isOpen = (n) => !isClosed(n) && stateOf(n) !== "deferred";
         // The day a gap was closed, as far as the page says: the decision, else the recheck that closed it.
         const closedOn = (n) => str(n.decidedOn) || str(n.recheckedOn) || str(n.updated);
         const byClosed = (a, b) => closedOn(b).localeCompare(closedOn(a)) || byTitle(a, b);
@@ -3020,8 +3022,8 @@
             const row = el("div", null, "row"),
               grow = el("div", null, "grow"),
               run = last.get(key),
-              own = nodes.filter((g) => foundBy(g) === key && !isClosed(g)).length,
-              open = own || nodes.filter((g) => isGap(g) && topicOf(g) === topic && !isClosed(g)).length;
+              own = nodes.filter((g) => foundBy(g) === key && isOpen(g)).length,
+              open = own || nodes.filter((g) => isGap(g) && topicOf(g) === topic && isOpen(g)).length;
             grow.append(el("b", label));
             if (what) grow.append(el("span", what, "muted small"));
             row.append(grow);
@@ -3391,7 +3393,7 @@
                 // The queue is the open work; what is closed is one step away, under History. A state with
                 // no gaps under the current filters is left out, unless it is the one selected.
                 [
-                  ["open", "Open", pool.length - history],
+                  ["open", "Open", pool.filter(isOpen).length],
                   ...OPEN_STATES.map((s) => [s, stateLabels[s], pool.filter((g) => stateOf(g) === s).length]),
                   ["history", "History", history],
                 ].filter(([s, , count]) => count || s === gapState || s === "open"),
@@ -3405,7 +3407,7 @@
             below.replaceChildren();
             if (stateHints[gapState]) below.append(el("p", stateHints[gapState], "muted small"));
             const listed = pool
-              .filter((g) => (gapState === "open" ? !isClosed(g) : gapState === "history" ? isClosed(g) : stateOf(g) === gapState))
+              .filter((g) => (gapState === "open" ? isOpen(g) : gapState === "history" ? isClosed(g) : stateOf(g) === gapState))
               .sort(gapSort === "newest" ? byAdded : gapState === "history" ? byClosed : byGapOrder);
             // A long queue is mostly small things. The low-priority gaps of the open work are folded away until
             // someone asks for them: by the button, by the priority filter or by searching for words.
