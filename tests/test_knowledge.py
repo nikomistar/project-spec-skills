@@ -607,6 +607,7 @@ class GapLayerTests(Fixture):
         self.assertIn('map: 2 of 4 features finished (50%), 1 in progress, 1 not started', lines)
         self.assertIn('gaps: 3 open (needs recheck 3, needs decision 0, accepted 0, deferred 0), 1 closed', lines)
         self.assertIn('open gaps by topic: security 2 (1 high), no topic 1', lines)
+        self.assertIn('open gaps by priority: high 1, low 1, none 1', lines)
         reviews = [line.strip() for line in lines[lines.index('reviews:') + 1:]]
         self.assertEqual(reviews[0], 'security   started 2026-11-14, 1 of 3 features, not finished; ' + at + 'runs/sec.md; 2 open gaps with topic security')
         self.assertEqual(reviews[1], 'abuse      not run; 2 open gaps with topic security; 1 open gap written by it',

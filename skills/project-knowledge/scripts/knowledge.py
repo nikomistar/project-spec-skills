@@ -1141,6 +1141,12 @@ def summary_lines(repo, vault, notes, warnings):
             topics.append(f"{topic or 'no topic'} {len(mine)}" + (f' ({high} high)' if high else ''))
     if topics:
         lines.append('open gaps by topic: ' + ', '.join(topics))
+    ranks = [priority_rank(g['meta']) for g in open_gaps(notes)]
+    by_priority = [f'{name} {count}' for name, count in (('high', sum(r <= 1 for r in ranks)), ('medium', ranks.count(2)),
+                                                          ('low', sum(r in (3, 4) for r in ranks)), ('other', ranks.count(5)),
+                                                          ('none', ranks.count(6))) if count]
+    if by_priority:
+        lines.append('open gaps by priority: ' + ', '.join(by_priority))
     lines.append('reviews:')
     for r in reviews_state(notes):
         if not r['run']:

@@ -70,6 +70,16 @@ What that means for each kind:
 
 A recheck never judges whether a proposal is worth doing, whether a requirement is right or which side of a conflict should win. That is the person's decision, made afterwards. For a proposal or a question about unexplained behavior the recheck is usually quick, for example reading the code to confirm the capability is absent, and it is still required: without it the gap stays in `needs-recheck` and cannot reach `needs-decision`. Write what you read in `Recheck` so the person can see the page was checked, not assumed.
 
+## A queue too long to read
+
+A queue of several hundred open gaps is not read by anyone. When a person says so, thin it in this order, and say how many gaps each step moved:
+
+1. **Twins and patterns.** Gaps that ask the same question of the same feature are duplicates: keep the one with the most evidence and close the others as `duplicate` with `duplicate_of`. The same question in three features or more becomes one gap for the pattern, with a table of the places, and the single gaps are closed as its duplicates ([the review guide](review.md#writing-the-gaps)). This is bookkeeping and needs no decision.
+2. **One decision for a class.** A person may decide many gaps in one sentence: "I defer every low-priority proposal", "reject the gaps about the old admin screens". That is a decision a person made: record it on each gap it covers, with their name in `decided_by`, today in `decided_on` and their sentence in `Decision`. Never choose the class yourself, and name the gaps it covered in your report.
+3. **Recheck from the top.** Recheck `high` first, then `medium`, against the current code. What no longer holds is closed as done; what holds is what the person reads.
+
+Lower a `priority` only when the page itself shows it was set too high, and say so in `Discussion`. Do not delete a gap to shorten the queue.
+
 ## Discussion entries
 
 One bullet per entry, oldest first, never edited or removed afterwards:

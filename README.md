@@ -60,8 +60,8 @@ Paste this, with the words from the first column in place of `security`:
 ```text
 Use the project-knowledge skill in review mode: review the product for security.
 Go by the inventory file, one feature at a time, and ask every question of the
-review guide. Read the code and run nothing. Write each doubt as its own gap,
-and tell me how many features you reviewed.
+review guide. Read the code and run nothing. Write what matters as gaps, note
+the small things on the run page, and tell me how many features you reviewed.
 ```
 
 If the session stops before the end: `Use project-knowledge to continue the security review from its run page.`

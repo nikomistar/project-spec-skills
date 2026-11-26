@@ -5,7 +5,7 @@ A map says what the product does. A review goes through the same product again w
 A review leaves three things:
 
 - **Rules the pages were missing.** What the code answers plainly (only an admin may open this, a file may be 10 MB at most) is a numbered rule on the feature's page, like any other rule.
-- **Gaps.** Each doubt is one gap with `topic` set, in the same queue as every other gap.
+- **Gaps.** Each doubt that is worth a person's decision is one gap with `topic` set, in the same queue as every other gap. A small one is a line on the run page ([What is worth a gap](#what-is-worth-a-gap)).
 - **A run page** that says which features were reviewed and which were not, so the pass can be continued.
 
 It never changes application code and never decides a gap.
@@ -27,8 +27,8 @@ A review reads code. It runs no scanner, no test and no application, like every 
 5. **Each answer goes to one place.**
    - The code does it, and the page does not say so: add the rule to the page, with the next free number. For security, also set [the page's `access`](format.md#properties).
    - The code does it, and the page says so: nothing to write.
-   - The code does not do it, does it in one place and not in another, or you cannot tell whether it is meant: a gap.
-6. **Finish.** Run `check`. Set the run page to `current` when every feature in scope is ticked. Report real counts: features reviewed out of those in scope, rules added, gaps written by priority, and "Not covered" with the tools that would cover it.
+   - The code does not do it, does it in one place and not in another, or you cannot tell whether it is meant: a gap when it matters, a line on the run page when it is small ([What is worth a gap](#what-is-worth-a-gap)).
+6. **Finish.** Run `check`. Set the run page to `current` when every feature in scope is ticked. Report real counts: features reviewed out of those in scope, rules added, gaps written by priority, lines noted, and "Not covered" with the tools that would cover it.
 
 ## A product that is not a web application
 
@@ -44,12 +44,32 @@ What the system does in such a moment (which dialog it shows, whether it starts 
 
 A review most of whose questions have nothing to ask (an API review of an app that calls nothing) is still run. It is short, and its run page says which questions were skipped.
 
+## What is worth a gap
+
+A gap asks a person for a decision, and a person reads a queue of forty, not of seven hundred. A review asks ten questions of every entry point of every feature, and most of what it meets is small. Written as a page each, the small things bury the few that matter. So a review writes a gap only for what is worth the decision, and notes the rest.
+
+- **A gap** is for what the topic's list rates `high` or `medium`.
+- **A line on the run page** is for what it rates `low`: a small inconsistency, a proposal for polish, something that could be nicer. It goes under `## Noted`, one line each: the feature, what the code does with the file in code formatting, and the question. It has no page, no recheck and no decision.
+
+```text
+## Noted
+
+- Blog editor: after a version conflict the form keeps the text and offers no way to merge it (`src/features/blog/editor/BlogEditor.tsx`). Keep a copy while it reloads?
+- Pricing: the header has no Log in action on a phone (`src/features/pricing/Header.tsx`). Meant?
+```
+
+- **Between `medium` and `low`**, ask what happens if nobody ever reads it. When the answer is "nothing much", it is a line.
+- **A small thing in many places can be worth one gap.** One form that trims a field differently is a line; ten of them are a question about the product ("One doubt per page", below).
+- **A line becomes a gap** when a person asks for it, or when a later pass finds it is worse than it looked. Then write the gap and strike the line.
+- **A person may ask for everything as gaps** ("write the low ones as gaps too"). Then do, with `priority: "low"`.
+
 ## Writing the gaps
 
 The rules in [gaps.md](gaps.md) apply. A review adds these:
 
 - **Look in the queue first.** A gap that already asks the question gets `topic` when it has none and a dated line in `Discussion`; it does not get a twin.
 - **One doubt per page.** The same missing check in several entry points of one feature is one gap that lists them. In two features it is two gaps, because each feature has its own owner and decision.
+- **In three features or more it is a pattern, and one gap.** The decision is one for the whole product, so ask it once: the title asks it of the product ("Should every text field refuse characters the database cannot store?"), `Current behavior` has a table of the places (feature, entry point, what the code does there), `areas` names every area it touches, and `priority` is that of the worst place. When a later feature shows the same thing, add a row to that gap and a dated line to `Discussion`. When you meet the third place and two gaps already ask it, write the pattern gap and close the two as `duplicate` of it.
 - **The title is the question a person decides**: "Should a member be able to change another member's role by saving the profile form?", not "Broken access control in users.save".
 - **`topic` is the one the list below names**, the same for every gap of the pass, so the queue can be filtered to what this review found.
 - **`review` is this pass's word**, the same as on the run page: `review: "flows"`. It says which review wrote the gap, which `topic` cannot say when two reviews share one. `summary`, `gaps --review` and the viewer count by it. A gap that was already in the queue keeps what it has.

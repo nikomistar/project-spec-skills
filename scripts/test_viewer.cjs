@@ -323,7 +323,11 @@ const queue = {
   assert.deepEqual(v.crumbs(), ['Sample vault', '/', 'Gaps']);
   const counts = () => findAll(v.page(), e => has(e, 'tab')).map(text);
   assert.deepEqual(counts(), ['Open8', 'Needs recheck3', 'Needs decision3', 'Accepted1', 'Deferred1', 'History3'], 'the queue is the open work; closed gaps are under History');
-  assert.equal(v.rowTitles().length, 8, 'no closed gap in the queue');
+  assert.equal(v.rowTitles().length, 7, 'no closed gap in the queue, and the low-priority one is folded away');
+  assert.ok(v.page().textContent.includes('1 low-priority gap is folded away.'));
+  v.btn(v.page(), 'Show it').click();
+  assert.equal(v.rowTitles().length, 8, 'one press shows it');
+  assert.ok(v.btn(v.page(), 'Fold the low-priority gaps'), 'and one more folds it again');
   // waiting states come first, each with the most urgent gap first (P1 before low, a gap without a priority last)
   assert.deepEqual(v.rowTitles().slice(0, 6), ['Gap recheck', 'Gap outdated', 'Legacy gap', 'Gap flagged', 'Gap derived', 'Gap decision']);
   v.tab(v.page(), 'Needs decision').click();
@@ -779,7 +783,7 @@ const queue = {
   assert.ok(preview().startsWith('Use the project-knowledge skill in review mode: review what this page covers for security.'));
   v.pill(card(), 'UI').click();
   assert.ok(preview().startsWith('Use the project-knowledge skill in review mode: review what this page covers for its UI.'));
-  assert.ok(preview().includes('Write each doubt as its own gap with the topic the guide names, and do not decide any.'));
+  assert.ok(preview().includes('Write what matters as gaps with the topic the guide names, note the small things as the guide says, and do not decide any.'));
   assert.ok(preview().includes('Related pages:\n- knowledge/parcel/notes/owner.md (Owner check)'));
   v.pill(card(), 'Ask a question').click();
   type('copy-note', 'What happens to a packed pickup?');
@@ -1157,6 +1161,7 @@ assert.deepEqual(pres(article('```js\none\n```\n\ntext\n\n```\ntwo\n```').art), 
   const v = load({ ...queue, nodes: [...queue.nodes, ...many] });
   v.go('Gaps');
   const more = () => findAll(v.page(), e => has(e, 'more-row'))[0];
+  v.btn(v.page(), 'Show it').click(); // the one low-priority gap of the queue, folded away at first
   assert.equal(v.rowTitles().length, 40);
   assert.deepEqual(more().children.map(text), ['Show 40 more', '40 of 103']);
   v.btn(more(), 'Show 40 more').click();

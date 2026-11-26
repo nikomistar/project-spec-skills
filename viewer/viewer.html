@@ -3051,7 +3051,7 @@
               copyText(
                 "Use the project-knowledge skill in review mode: review the product for " + phrase +
                   ". Go by the inventory file, one feature at a time, and ask every question of the review guide of every entry point. " +
-                  "Read the code and run nothing. Write each doubt as its own gap, and tell me how many features you reviewed.",
+                  "Read the code and run nothing. Write what matters as gaps, note the small things on the run page, and tell me how many features you reviewed.",
                 "Copied. Paste it into your agent.",
                 ask,
                 "Copied",
@@ -3254,6 +3254,7 @@
           gapKind = "",
           gapTopic = "", // "" for all, "none" for gaps without one, otherwise the value
           gapReview = "", // "" for all, otherwise the review that wrote the gap
+          gapLow = false, // the low-priority gaps of the queue are folded away until asked for
           gapWords = "", // every word must be in the gap's title, summary, path or text
           gapPriority = ""; // "" for all, "none" for gaps without one, otherwise the value
         const selectOf = (label, options, value, pick) => {
@@ -3403,9 +3404,16 @@
             );
             below.replaceChildren();
             if (stateHints[gapState]) below.append(el("p", stateHints[gapState], "muted small"));
-            const shown = pool
+            const listed = pool
               .filter((g) => (gapState === "open" ? !isClosed(g) : gapState === "history" ? isClosed(g) : stateOf(g) === gapState))
               .sort(gapSort === "newest" ? byAdded : gapState === "history" ? byClosed : byGapOrder);
+            // A long queue is mostly small things. The low-priority gaps of the open work are folded away until
+            // someone asks for them: by the button, by the priority filter or by searching for words.
+            const isLow = (g) => priorityRank(g) === 3 || priorityRank(g) === 4,
+              rest = listed.filter((g) => !isLow(g)),
+              canFold = gapState !== "history" && !gapPriority && !asked.length && rest.length > 0 && rest.length < listed.length,
+              shown = canFold && !gapLow ? rest : listed,
+              folded = listed.length - shown.length;
             if (shown.length) {
               // A long queue comes in portions: the most urgent are in the first one, the rest one press away.
               const card = el("section", null, "card"),
@@ -3427,6 +3435,18 @@
               };
               fill();
               below.append(card, more);
+              if (canFold) {
+                const low = el("div", null, "more-row");
+                low.id = "gap-low";
+                if (folded) low.append(el("span", plural(folded, "low-priority gap") + (folded === 1 ? " is" : " are") + " folded away.", "muted small"));
+                low.append(
+                  button(folded ? "Show " + (folded === 1 ? "it" : "them") : "Fold the low-priority gaps", "btn", () => {
+                    gapLow = !gapLow;
+                    again();
+                  }),
+                );
+                below.append(low);
+              }
             } else {
               const none = el("p", gapState === "history" && !anyFilter() ? "Nothing is closed yet." : "No gaps match. Try other filters.", "empty");
               below.append(none);
@@ -3736,7 +3756,7 @@
             text: (c) =>
               "Use the project-knowledge skill in review mode: review what this page covers for " +
               reviewPhrase(c.topic) +
-              ". Follow the skill's review guide and its questions for this topic, read the code and run nothing. Write each doubt as its own gap with the topic the guide names, and do not decide any." +
+              ". Follow the skill's review guide and its questions for this topic, read the code and run nothing. Write what matters as gaps with the topic the guide names, note the small things as the guide says, and do not decide any." +
               (c.note ? "\n\nLook at: " + c.note : ""),
           },
           question: {

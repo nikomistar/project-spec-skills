@@ -137,8 +137,9 @@ The map writes down what the product does and raises the doubts it meets on the 
 ```text
 Use the project-knowledge skill in review mode: review the product for security.
 Go by the inventory file, one feature at a time, and ask every question of the
-review guide of every entry point. Read the code and run nothing. Write each doubt
-as its own gap with topic security, and tell me how many features you reviewed.
+review guide of every entry point. Read the code and run nothing. Write what
+matters as gaps with topic security, note the small things on the run page, and
+tell me how many features you reviewed.
 ```
 
 | Topic | What it asks |
@@ -158,7 +159,7 @@ The full lists are in [the review guide](../skills/project-knowledge/references/
 What comes out:
 
 - **Rules.** What the code answers plainly goes onto the feature's page as a numbered rule. A security review also fills in who may use each feature (`access`), which the viewer shows beside the title.
-- **Gaps.** Each doubt is one gap with its topic, in the same queue as the others. Filter the queue by topic to see only those.
+- **Gaps.** Each doubt worth a decision is one gap with its topic, in the same queue as the others. Filter the queue by topic to see only those. What the review rates low is one line under "Noted" on the run page and not a gap, and the same doubt in three features or more is one gap with a table of the places: a review of a big product would otherwise leave hundreds of pages nobody reads.
 - **A run page** with the features reviewed and not reviewed, so a later session continues where this one stopped.
 
 ### What was checked, and what was not

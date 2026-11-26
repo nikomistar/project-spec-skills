@@ -2,6 +2,19 @@
 
 > The entries below record what was checked at the time, in the terms of that time. Since then the five skills were merged into two (`spec-audit` and `spec-investigation` into `project-knowledge`, `spec-plan` into `spec-change`), the generated `AS-BUILT.md`, `GAPS.md` and `graph.html` were replaced by the viewer, and the `build` command was removed. None of that has been evaluated with a fresh agent yet. `spec-change` was never run on a real change and was removed in 0.11.0.
 
+## 2026-11-26: a queue nobody can read
+
+- Seen in real use: on a product with 82 features, the map and nine reviews left 772 open gaps, about 230,000 words: 18 high, 225 medium, 513 low and 16 with no priority. 386 of them are proposals (`product-plan`), and 55 had been rechecked. The owner said nobody will read it. One low proposal about a blog editor had a paragraph added by each of four reviews.
+- Why: a review asks its questions of every entry point and wrote a page for every "no", whatever its weight. The guide asked for one gap per feature for the same doubt, so one pattern was written many times ("characters PostgreSQL text cannot store" at least four times, "an unused API remains registered" eleven). And the queue listed everything.
+- 0.18.0:
+  - A review writes a gap for what its list rates `high` or `medium`, and one line under "Noted" on the run page for what it rates `low`. A person can still ask for everything as gaps.
+  - The same doubt in three features or more is one gap with a table of the places.
+  - The gap guide says how to thin a queue that is already too long: twins and patterns first, then one decision of a person for a whole class, then a recheck from the top.
+  - `summary` prints the open gaps by priority, and the viewer folds the low-priority gaps of the open queue until someone asks for them.
+  - The requests in the README, the docs and the viewer no longer say "each doubt as its own gap".
+- Checked: helper and viewer tests for the line of `summary` and the folded gaps; `summary` on that vault printed "high 18, medium 225, low 513, none 16". `python3 scripts/verify.py` passed.
+- **NOT RUN:** no review has been run with the new bar. It is not known how many gaps it leaves, whether an agent then rates things `medium` to keep them or `low` to be rid of them, or whether anyone reads "Noted". The queue of that product was not thinned. The folded queue was not opened on that vault in a browser. The map still writes every doubt it meets as a gap, about 150 on each of the first two products.
+
 ## 2026-11-24: nine reviews on a small desktop app
 
 - The first run of `logic` and `flows`, and the first time all nine reviews were run on one product: a macOS screen recorder with a static website and one small server function, 54 files. One agent (Claude Opus 5.5) mapped it and then ran each review as a pass of its own, with 0.16.0 read from this repository. The time was not recorded.
