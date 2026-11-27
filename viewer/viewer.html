@@ -636,6 +636,19 @@
         color: var(--muted);
         overflow-wrap: anywhere;
       }
+      .pathcopy {
+        border: 0;
+        padding: 0;
+        background: none;
+        text-align: left;
+      }
+      .pathcopy:hover,
+      .pathcopy.said {
+        color: var(--ink);
+      }
+      .pathcopy:hover {
+        text-decoration: underline;
+      }
       .metarow {
         display: flex;
         flex-wrap: wrap;
@@ -1849,6 +1862,8 @@
         const files =
             data.files && typeof data.files === "object" ? data.files : {},
           vaultPath = typeof data.vaultPath === "string" ? data.vaultPath : "",
+          // Only `serve` sends it: the repository's folder on this machine.
+          repoRoot = typeof data.repoRoot === "string" ? data.repoRoot : "",
           historyLog = (Array.isArray(data.history) ? data.history : []).filter(
             (c) => c && typeof c === "object",
           ),
@@ -2085,6 +2100,24 @@
         // Where the page file is in the repository: what an agent needs to open it.
         const repoPath = (n) =>
           (vaultPath && vaultPath !== "." ? vaultPath.replace(/\/+$/, "") + "/" : "") + String(n.path || "");
+        // The same file as a full path on this machine, with the folder's own separator. Without the folder
+        // (a built page) it is the path in the repository.
+        const fullPath = (n) => {
+          if (!repoRoot) return repoPath(n);
+          const sep = repoRoot.includes("\\") && !repoRoot.includes("/") ? "\\" : "/",
+            parts = [];
+          for (const p of repoPath(n).split("/")) {
+            if (p === "..") parts.length ? parts.pop() : parts.push(p);
+            else if (p && p !== ".") parts.push(p);
+          }
+          let root = repoRoot.replace(/[\\/]+$/, "");
+          // a vault beside the repository starts with ../
+          while (parts[0] === ".." && /[\\/][^\\/]+$/.test(root)) {
+            root = root.replace(/[\\/][^\\/]+$/, "");
+            parts.shift();
+          }
+          return root + sep + parts.join(sep);
+        };
         let toastTimer = null;
         function toast(message, quiet) {
           $("#toast").textContent = message;
@@ -2143,6 +2176,12 @@
           }
           byHand();
         }
+        // The page's file as shown on the page. Pressing it copies the path: the full one where it is known.
+        const pathButton = (n) => {
+          const b = button(repoPath(n), "path pathcopy", () => copyText(fullPath(n), "Path copied", b, "Copied"));
+          b.title = "Copy the path: " + fullPath(n);
+          return b;
+        };
         const icon = (path, size) => {
           const s = sv("svg", {
             "aria-hidden": "true",
@@ -2982,7 +3021,27 @@
           else box.append(reviewsSection());
           view.append(box);
         }
-        // What the skill can look at on purpose, one topic per pass, and when each pass was last made.
+        // A review's checklist by level: the boxes under a High, Medium or Low heading, as [level, ticked, all].
+        // Empty when the checklist is one list (a run page from before features had a priority).
+        function levelTicks(body) {
+          const found = new Map();
+          let level = "";
+          for (const line of String(body || "").split("\n")) {
+            const head = /^ {0,3}#{1,6}[ \t]+(.*?)[ \t]*$/.exec(line);
+            if (head) {
+              level = head[1].toLowerCase();
+              continue;
+            }
+            const tick = /^\s*[-*] \[([ xX])\]/.exec(line);
+            if (!tick || !["high", "medium", "low"].includes(level)) continue;
+            const box = found.get(level) || [0, 0];
+            box[0] += tick[1] === " " ? 0 : 1;
+            box[1] += 1;
+            found.set(level, box);
+          }
+          return ["high", "medium", "low"].filter((l) => found.has(l)).map((l) => [l, ...found.get(l)]);
+        }
+        // What the skill can look at on purpose, and when each review was last made.
         function reviewsSection() {
           const section = el("section", null, "reviews"),
             card = el("div", null, "card"),
@@ -3006,6 +3065,14 @@
               );
             const left = [+map.inProgress && map.inProgress + " in progress", +map.notStarted && map.notStarted + " not started"].filter(Boolean).join(", ");
             if (left) row.append(el("span", left, "muted small"));
+            // How early a review reads each feature, when the inventory ranks them.
+            const ranks = map.priority && typeof map.priority === "object" ? map.priority : null;
+            if (ranks) {
+              const by = ["high", "medium", "low"].map((l) => (+ranks[l] || 0) + " " + l).join(", "),
+                span = el("span", "By priority: " + by + (+ranks.none ? ", " + ranks.none + " not ranked" : ""), "muted small");
+              span.title = "A review reads the high features first. The inventory file says why each has its level.";
+              row.append(span);
+            }
             if (total && done < total) {
               const more = button("Copy request to continue", "btn", () =>
                 copyText("Use the project-knowledge skill and continue the map from the inventory file.", "Copied. Paste it into your agent.", more, "Copied"),
@@ -3034,9 +3101,12 @@
                 when = button((unfinished ? "Started " : "Last run ") + runDay(run), "rowlink", () => openNode(run));
               when.title = "Open the page of this run";
               row.append(when);
-              if (ticked + unticked)
-                row.append(el("span", ticked + " of " + plural(ticked + unticked, "feature") + (unfinished ? ", not finished" : ""), "muted small"));
-              else if (unfinished) row.append(el("span", "not finished", "muted small"));
+              if (ticked + unticked) {
+                const levels = levelTicks(bodyOf(run)).map(([level, done, all]) => level + " " + done + " of " + all).join(", ");
+                row.append(
+                  el("span", ticked + " of " + plural(ticked + unticked, "feature") + (levels ? " (" + levels + ")" : "") + (unfinished ? ", not finished" : ""), "muted small"),
+                );
+              } else if (unfinished) row.append(el("span", "not finished", "muted small"));
             } else row.append(el("span", "Not run yet", "muted small"));
             if (open)
               row.append(
@@ -3052,7 +3122,7 @@
             const ask = button(run ? "Copy request to run again" : "Copy request", "btn", () =>
               copyText(
                 "Use the project-knowledge skill in review mode: review the product for " + phrase +
-                  ". Go by the inventory file, one feature at a time, and ask every question of the review guide of every entry point. " +
+                  ". Read the high-priority features, one at a time by the inventory file, and ask every question of the review guide of every entry point. " +
                   "Read the code and run nothing. Write what matters as gaps, note the small things on the run page, and tell me how many features you reviewed.",
                 "Copied. Paste it into your agent.",
                 ask,
@@ -3064,7 +3134,7 @@
           });
           section.append(
             el("h2", "What was checked", "h2"),
-            el("p", "The map, and the reviews the agent can run on purpose, one topic per pass. A review reads the code and writes each doubt as a gap.", "muted"),
+            el("p", "The map, and the reviews the agent can run on purpose, one topic per pass and the high-priority features first. A review reads the code and writes each doubt as a gap.", "muted"),
             card,
           );
           return section;
@@ -3170,7 +3240,7 @@
             meta.append(access);
           }
           // The file path of a spec page is for the person who edits it, so it sits at the foot of the page.
-          if (layer !== "spec") meta.append(el("span", repoPath(n), "path"));
+          if (layer !== "spec") meta.append(pathButton(n));
           main.append(meta);
 
           if (isGap(n)) {
@@ -3240,7 +3310,7 @@
             }
             const foot = el("p", null, "muted small pagefoot");
             if (n.updated) foot.append(el("span", "Updated " + n.updated));
-            foot.append(el("span", repoPath(n), "path"));
+            foot.append(pathButton(n));
             folds.append(foot);
             main.append(folds);
           } else main.append(markdown(bodyOf(n), n));

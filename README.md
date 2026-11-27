@@ -46,19 +46,11 @@ This first map is the long run: from one to a few hours of agent time, more for 
 **3. Have it checked.** The map writes down what the product does and only the doubts it met on the way. The checks are a second request: nine [reviews](#reviews), each with a fixed list of questions. When the map is finished, paste this:
 
 ```text
-Use the project-knowledge skill in review mode: run every review the guide has a
-list for, one topic per pass, each with its own run page. Start with flows and
-logic, then security, abuse, validation, data, failure paths, API and UI.
-
-Go by the inventory file, one feature at a time. Read the code and run nothing.
-Before writing a gap, look in the queue for one that already asks the question.
-Write what matters as gaps and note the small things on the run page.
-
-When all are done, tell me for each review how many features it covered, how
-many gaps it wrote by priority and how many things it noted.
+Use the project-knowledge skill to rank the features: which ones should a review
+read first, and why? Then tell me what I can run next.
 ```
 
-That is for a product of up to about twenty features. For a bigger one, run [one review per session](#reviews), one after another.
+It marks each feature high, medium or low from what it does, and answers with requests you can paste: one per review (`review the high-priority features for security`) and one per high-priority feature (`run every review on the feature "Checkout"`). A review stops when it has read the high-priority features and says how to go on. `npx project-spec next` prints the requests again at any time, with how far each review got.
 
 **4. Read what it wrote:**
 
@@ -99,12 +91,14 @@ If the session stops before the end: `Use project-knowledge to continue the secu
 
 **Which, and how many at once.**
 
-- **A small product** (up to about twenty features): all nine in one session, with the request under [Start](#start).
-- **A big one**: one review per session, one after another. Do not run several agents on one spec at the same time: they do not see each other's gaps and write the same question twice.
+- **By topic or by feature.** One list of questions over the features (`review the high-priority features for security`), or every list on one feature that matters (`run every review on the feature "Checkout"`). Every list over every feature in one go is not offered: it is quick and finds a fraction.
+- **High first, the rest when you say.** A review stops after the high-priority features. Going on with the medium ones is your call, and `npx project-spec next` has the request.
+- **One agent at a time.** Several agents on one spec do not see each other's gaps and write the same question twice.
+- **Which features first.** The agent gives each feature a priority from what it does (money, accounts, other people's data, deleting, files, what is public) and writes it into the inventory file with the reason: `Priority: high (money, others-data)`. A review reads the high ones first. Change any line; your word stays.
 - **Not every product needs all nine.** Begin with `its flows` and `its logic`. Add `security`, `abuse` and `validation` when the product has accounts and a server. An app with no server has little for `its API`.
 - **To keep one short**, name an area: `review the billing area for security`.
 
-A review opens every entry point again, so it takes about as long as the map of the features it covers, and all nine take several times that. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
+A review opens every entry point again, so it takes about as long as the map of the features it covers; reading one level at a time keeps that short. It reads code and is not a scanner: for vulnerable or outdated packages use `npm audit` or a similar tool. `summary` and the viewer's first page show which reviews have run, when, and which have not.
 
 ## What you get
 
@@ -134,6 +128,7 @@ This writes a short block into the file your agent reads at the start of a sessi
 | --- | --- |
 | `npx project-spec serve` | Open the spec and the gap queue in the browser. |
 | `npx project-spec summary` | Where the spec stands: how much of the product is mapped, the gaps by state and topic, each review and when it last ran. |
+| `npx project-spec next` | What a review can take up next, as requests to paste into your agent: by topic and by feature, the high-priority features first. |
 | `npx project-spec gaps --topic security` | List gaps, the most urgent first, each with its file. Also `--state`, `--priority`, `--area`, `--review`. |
 | `npx project-spec check` | Find broken pages and the pages whose code changed since they were read. |
 | `npx project-spec coverage` | What the code has that no page mentions yet. |

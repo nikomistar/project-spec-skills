@@ -495,6 +495,7 @@ class GapLayerTests(Fixture):
         self.assertTrue(data['live'])
         self.assertEqual(data['files']['source.txt']['text'], 'evidence')
         self.assertEqual(data['vaultPath'], '../vault')
+        self.assertEqual(data['repoRoot'], str(self.repo.resolve()))
         self.assertEqual((data['history'], data['pending']), ([], []))
         self.assertEqual({n['id'] for n in data['nodes']}, {'a', 'index', 'n'})
         # nothing was written, and a change on disk shows on the next load without a build
@@ -584,6 +585,75 @@ class GapLayerTests(Fixture):
         self.note('notes/n.md', 'n', sources=['source.txt'])
         self.note('gaps/g.md', 'g', 'gap', access=['admin'], **gap)
         self.assertIn('access is only valid on note pages', self.run_cli('check')[2])
+
+    def test_summary_counts_features_and_review_progress_by_priority(self):
+        (self.vault / '.knowledge').mkdir(exist_ok=True)
+        # a feature's `Priority` line is under its own heading; one under another heading is not its line
+        (self.vault / '.knowledge/inventory.md').write_text(
+            '# Inventory\n\n## Checkout: finished\n\nFolders: src/pay\nPriority: high (money, others-data)\n\n- [x] web /pay\n\n'
+            '## Profile: finished\n\npriority: Medium (files)\n\n## About: not started\n\nPriority: low\n\n'
+            '## Search: not started\n\nPriority: soon\n\n## Left out\n\nPriority: high\n', encoding='utf-8')
+        self.note('runs/sec.md', 'sec', 'run', areas=[], review='security', status='partial',
+                  body='## Feature checklist\n\n### High\n\n- [x] Checkout\n\n### Medium\n\n- [ ] Profile\n\n## Noted\n\n- Checkout: a line\n')
+        # a run page written before features had a priority has one list and no levels
+        self.note('runs/data.md', 'data', 'run', areas=[], review='data', body='## Features\n\n- [x] Checkout\n- [x] Profile\n')
+        at = Path(os.path.relpath(self.vault.resolve(), self.repo.resolve())).as_posix() + '/'
+        lines = self.run_cli('summary')[1].splitlines()
+        self.assertIn('map: 2 of 4 features finished (50%), 0 in progress, 2 not started', lines)
+        self.assertIn('features by priority: 1 high, 1 medium, 1 low, 1 not ranked', lines)
+        reviews = [line.strip() for line in lines[lines.index('reviews:') + 1:]]
+        self.assertEqual(reviews[0], 'security   started 2026-11-14, 1 of 2 features (high 1 of 1, medium 0 of 1), not finished; '
+                         + at + 'runs/sec.md; 0 open gaps with topic security')
+        self.assertEqual(reviews[3], 'data       last run 2026-11-14, 2 of 2 features; ' + at + 'runs/data.md; 0 open gaps with topic data')
+        self.assertEqual(k.map_state(self.vault)['priority'], {'high': 1, 'medium': 1, 'low': 1, 'none': 1})
+        # an inventory that ranks nothing says nothing about priority
+        (self.vault / '.knowledge/inventory.md').write_text('# Inventory\n\n## Chats: finished\n', encoding='utf-8')
+        self.assertNotIn('priority', k.map_state(self.vault))
+        self.assertFalse([line for line in self.run_cli('summary')[1].splitlines() if line.startswith('features by priority')])
+
+    def test_next_prints_the_requests_that_start_or_continue_a_review(self):
+        ask = 'Use the project-knowledge skill'
+        out = self.run_cli('next')[1].splitlines()
+        self.assertIn('has no inventory file', out[0])
+        self.assertEqual(out[1], '  ' + ask + ' to build a knowledge vault for this repository.')
+        (self.vault / '.knowledge').mkdir(exist_ok=True)
+        inventory = self.vault / '.knowledge/inventory.md'
+        inventory.write_text('# Inventory\n\n## Checkout: finished\n\n## Profile: finished\n', encoding='utf-8')
+        out = self.run_cli('next')[1].splitlines()
+        self.assertEqual(out[1:], ['features by priority: 0 high, 0 medium, 0 low, 2 not ranked',
+                                   'the features are not ranked yet, so a review has no order to read them in:', '  ' + ask + ' to rank the features.'])
+        inventory.write_text('# Inventory\n\n## Checkout: finished\n\nPriority: high (money)\n\n## Team members: finished\n\nPriority: high (accounts)\n\n'
+                             '## Profile: finished\n\nPriority: medium (files)\n\n## Search: not started\n', encoding='utf-8')
+        levels = '## Feature checklist\n\n### High\n\n- [{}] Checkout\n- [{}] `Team members`\n\n### Medium\n\n- [ ] Profile\n'
+        self.note('runs/sec.md', 'sec', 'run', areas=[], review='security', status='partial', body=levels.format('x', ' '))
+        self.note('runs/data.md', 'data', 'run', areas=[], review='data', status='partial', body=levels.format('x', 'X'))
+        # a checklist that is one list, from before features had a priority
+        self.note('runs/logic.md', 'logic', 'run', areas=[], review='logic', status='partial', body='- [x] Checkout\n- [ ] Profile\n')
+        status, text, err = self.run_cli('next')
+        self.assertEqual((status, err), (0, ''))
+        out = text.splitlines()
+        self.assertEqual(out[1:5], ['features by priority: 2 high, 1 medium, 0 low, 1 not ranked', '1 features have no priority and are in no level:',
+                                    '  ' + ask + ' to rank the features that have no priority yet.', 'high: Checkout; Team members'])
+
+        def entry(first):
+            at = out.index(first)
+            return out[at + 1]
+
+        self.assertEqual(entry('  flows      not run'), '    ' + ask + ' in review mode: review the high-priority features for their flows.')
+        self.assertEqual(entry('  security   high 1 of 2, medium 0 of 1'), '    ' + ask + ' to continue the security review from its run page.')
+        self.assertEqual(entry('  data       high 2 of 2, medium 0 of 1'), '    ' + ask + ' in review mode: go on with the data review for the medium-priority features.',
+                         'a level that is done is not offered again; the next one is')
+        self.assertEqual(entry('  logic      1 of 2 features'), '    ' + ask + ' to continue the logic review from its run page.')
+        topics = [line.split()[0] for line in out[out.index('by topic: one list of questions over one level of features') + 1:] if line.startswith('  ') and not line.startswith('    ')]
+        self.assertEqual(topics[:9], ['flows', 'logic', 'security', 'abuse', 'validation', 'data', 'failures', 'api', 'ui'], 'in the order the guide runs them')
+        # by feature: how many of the nine reviews have ticked it, whatever marks its name has on the run page
+        self.assertEqual(entry('  Checkout: 3 of 9 reviews'), '    ' + ask + ' in review mode: run every review on the feature "Checkout".')
+        self.assertEqual(entry('  Team members: 1 of 9 reviews'), '    ' + ask + ' in review mode: run every review on the feature "Team members".')
+        # a review that has read every level says so and asks for nothing
+        self.note('runs/data.md', 'data', 'run', areas=[], review='data', body=levels.format('x', 'x').replace('- [ ] Profile', '- [x] Profile'))
+        out = self.run_cli('next')[1].splitlines()
+        self.assertIn('  data       high 2 of 2, medium 1 of 1, finished', out)
+        self.assertFalse(out[out.index('  data       high 2 of 2, medium 1 of 1, finished') + 1].startswith('    '))
 
     def test_summary_and_gaps_say_where_the_spec_stands(self):
         gap = dict(sources=[], kind='product-gap', recheck='not-checked', decision='open', status=None, body=GAP_BODY)
@@ -758,6 +828,7 @@ class GapLayerTests(Fixture):
         self.assertIn('build: wrote ' + str(self.root / 'site/spec.html'), printed)
         self.assertIn('their text is not included', printed)
         self.assertEqual((data['built'], data.get('live'), data['files'], data['sourceUrl'], data['commit']), (True, None, {}, '', ''))
+        self.assertNotIn('repoRoot', data, 'a page for a server does not name a folder of this machine')
         self.assertEqual({n['id'] for n in data['nodes']}, {'a', 'index', 'n'})
         self.assertNotIn('evidence', (self.root / 'site/spec.html').read_text(encoding='utf-8'))
         # nothing appeared in the vault, and no temporary file was left beside the page

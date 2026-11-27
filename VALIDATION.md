@@ -2,6 +2,26 @@
 
 > The entries below record what was checked at the time, in the terms of that time. Since then the five skills were merged into two (`spec-audit` and `spec-investigation` into `project-knowledge`, `spec-plan` into `spec-change`), the generated `AS-BUILT.md`, `GAPS.md` and `graph.html` were replaced by the viewer, and the `build` command was removed. None of that has been evaluated with a fresh agent yet. `spec-change` was never run on a real change and was removed in 0.11.0.
 
+## 2026-11-27: which features a review reads first
+
+- Seen in real use: on a product with 94 features the flows review had read 16 of them, and the other eight reviews none. Nine lists over 94 features are 846 visits, each a "continue" its owner has to press. The owner asked whether a review can begin with the features that matter and leave a profile page for later.
+- 0.19.0:
+  - Each feature gets a `Priority` in the inventory file, by rule from eight signals read from the code (`money`, `accounts`, `others-data`, `destructive`; `public`, `files`, `outbound`, `central`), with the signals as the reason. A level a person sets stays.
+  - A review is asked for by topic or by feature, reads the high-priority features first and stops at the end of a level. Its run page is its ledger: every feature under its level, and a `Read` line for each one it reviewed.
+  - `next` prints the requests that start a review, continue it, go on with the next level, or read one high-priority feature whole. `summary` and the viewer count the features by priority and each review's progress by level.
+  - The viewer's file path on a page is a button that copies the full path (`serve`) or the path in the repository (a built page).
+- Forward tests, each a fresh agent session (Claude Opus) with the request and the skill only, in a throwaway clone of a public repository: a command-line toolkit for one user, 151 features in its inventory, 20 in scope. Its spec had been through nine separate reviews of those 20 features; what they wrote (27 gaps, the run pages, the counts on the index) was removed from the copy first.
+  - **FAIL, and not shipped:** every review over the 20 features in one pass, each feature opened once and asked every list. 17 minutes. It wrote 11 gaps. Of the 27 from the separate passes it wrote 5 again and noted about 5 more as small things (matched by keyword, not read one by one). The abuse, failures and UI lists wrote no gap where the separate passes had written 10. The agent said it read all the code before writing and did not ask every question of the low features. The request told it to finish all 20, which itself pushes toward haste. The guide now refuses this pass.
+  - **PASS:** rank. 3 minutes: 2 high, 10 medium, 8 low. The two commands that delete a folder the person names came out high. Code was opened only for the 8 features that have no page. No review was started, and the requests of `next` were passed on as printed. An earlier run with a wider wording of `destructive` also put a command that overwrites its own output file in the high level; the wording was narrowed.
+  - **PASS:** every review on one high feature, asked with the request `next` printed. 8.5 minutes: 3 gaps (1 high, 2 medium) and 11 noted lines. The four findings the separate passes had for this feature were all met, one as a gap and three as noted lines. The two gaps that are new were read against the code afterwards and hold. Each of the nine run pages has the checklist by level and the `Read` line, the groups were written one before the next, and `next` then offered to continue each review and no longer listed the feature.
+- **NOT RUN:**
+  - A review by topic over one level with the stop at its end, and going on with the next level in the same run page.
+  - The wording changed after these tests: the signals for a tool with one user, where the rules of a feature without a page go, which list writes a finding that two lists ask about.
+  - A product with accounts and payments. The test product has neither, so `money`, `accounts` and `others-data` were never given, and whether the levels sort such a product usefully is not known.
+  - The product with 94 features has not been ranked or reviewed with this version.
+  - One feature is one sample. The 27 earlier gaps were not themselves checked, so "not written again" does not always mean "missed".
+  - The viewer's path button and the counts by priority were tried in a browser on one spec, not on a narrow screen.
+
 ## 2026-11-26: the long queue, thinned
 
 - Run by an agent with 0.18.0 on the product of the entry below, at its owner's request, as the three steps of "A queue too long to read". Step 1 closed 1 twin and 174 single gaps as duplicates of 30 new pattern gaps. Step 2 recorded the owner's one sentence ("I defer every low-priority gap of kind product-plan") on 222 gaps. Step 3 rechecked 17 high and 185 medium gaps. 772 gaps that waited became 404: 17 high, 185 medium, 187 low and 15 with no priority.

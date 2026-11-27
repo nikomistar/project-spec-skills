@@ -477,7 +477,7 @@ const queue = {
   assert.ok(text(row('Abuse')).includes('Not run yet') && v.btn(row('Abuse'), '1 open gap'), 'the gaps of an abuse review have the topic security');
   assert.ok(text(row('Texts')).includes('Last run 2026-11-04'), 'a run page named <date>-review-<topic> is a review; one that only ends in -review is not');
   v.btn(row('Data'), 'Copy request').click();
-  assert.ok(v.copied.at(-1).startsWith('Use the project-knowledge skill in review mode: review the product for data. Go by the inventory file'));
+  assert.ok(v.copied.at(-1).startsWith('Use the project-knowledge skill in review mode: review the product for data. Read the high-priority features'));
   v.btn(row('API'), 'Copy request').click();
   assert.ok(v.copied.at(-1).includes('review the product for its API.'));
   // the run page is one press away
@@ -1221,6 +1221,52 @@ assert.deepEqual(pres(article('```js\none\n```\n\ntext\n\n```\ntwo\n```').art), 
   assert.equal(link.textContent, 'Copy link');
   assert.ok(!has(link, 'said'));
   assert.equal(v.q('#toast').textContent, '');
+}
+
+// the path of a page's file is a button that copies it: the full path on `serve`, the path in the repository
+// on a built page
+{
+  const pathOf = v => findAll(v.page(), e => e.tag === 'button' && has(e, 'pathcopy'))[0];
+  let v = load({ ...parcel(), live: true, vaultPath: 'project-spec', repoRoot: '/home/ana/parcel/' }, { hash: '#/page/gaps/g-open', timers: true });
+  assert.equal(pathOf(v).textContent, 'project-spec/gaps/g-open.md', 'the page still shows the short path');
+  assert.equal(pathOf(v).title, 'Copy the path: /home/ana/parcel/project-spec/gaps/g-open.md');
+  pathOf(v).click();
+  assert.deepEqual(v.copied, ['/home/ana/parcel/project-spec/gaps/g-open.md']);
+  assert.equal(pathOf(v).textContent, 'Copied');
+  v.tick();
+  assert.equal(pathOf(v).textContent, 'project-spec/gaps/g-open.md');
+  // a spec page has it at its foot
+  v = load({ ...parcel(), live: true, vaultPath: 'project-spec', repoRoot: '/home/ana/parcel' }, { hash: '#/page/notes/owner' });
+  pathOf(v).click();
+  assert.deepEqual(v.copied, ['/home/ana/parcel/project-spec/notes/owner.md']);
+  // a vault beside the repository, and a Windows folder
+  v = load({ ...parcel(), live: true, vaultPath: '../vault', repoRoot: '/home/ana/parcel' }, { hash: '#/page/gaps/g-open' });
+  pathOf(v).click();
+  assert.deepEqual(v.copied, ['/home/ana/vault/gaps/g-open.md']);
+  v = load({ ...parcel(), live: true, vaultPath: 'project-spec', repoRoot: 'C:\\work\\parcel' }, { hash: '#/page/gaps/g-open' });
+  pathOf(v).click();
+  assert.deepEqual(v.copied, ['C:\\work\\parcel\\project-spec\\gaps\\g-open.md']);
+  // a built page does not know the folder
+  v = load({ ...parcel(), built: true, vaultPath: 'project-spec' }, { hash: '#/page/gaps/g-open' });
+  pathOf(v).click();
+  assert.deepEqual(v.copied, ['project-spec/gaps/g-open.md']);
+}
+
+// features ranked by priority: the overview says how many each level has, and how far a review got in each
+{
+  const page = body => node({ id: 'sec', title: 'sec', type: 'run', layer: 'nav', status: 'partial', path: 'runs/2026-11-06-review-security.md', areas: [], updated: '2026-11-06', body });
+  const rowOf = (v, name) => findAll(findAll(v.page(), e => has(e, 'reviews'))[0], e => has(e, 'row')).find(r => findAll(r, e => e.tag === 'b')[0].textContent === name);
+  const base = { title: 'Ranked', nodes: [node({ id: 'areas/a', title: 'Area A', type: 'area', layer: 'spec', status: 'current', path: 'areas/a.md', areas: ['areas/a'] })], edges: [] };
+  let v = load({ ...base, map: { finished: 2, inProgress: 0, notStarted: 2, priority: { high: 1, medium: 2, low: 0, none: 1 } },
+    nodes: [...base.nodes, page('## Feature checklist\n\n### High\n\n- [x] Checkout\n\n### Medium\n\n- [x] Profile\n- [ ] Search\n\n## Noted\n\n- Checkout: a line\n')] });
+  assert.ok(text(rowOf(v, 'Map')).includes('By priority: 1 high, 2 medium, 0 low, 1 not ranked'));
+  assert.ok(text(rowOf(v, 'Security')).includes('2 of 3 features (high 1 of 1, medium 1 of 2), not finished'));
+  // an inventory that ranks nothing, and a checklist that is one list, say nothing about levels
+  v = load({ ...base, map: { finished: 2, inProgress: 0, notStarted: 2 }, nodes: [...base.nodes, page('- [x] Checkout\n- [ ] Profile\n')] });
+  assert.ok(!text(rowOf(v, 'Map')).includes('By priority'));
+  assert.ok(text(rowOf(v, 'Security')).includes('1 of 2 features, not finished'));
+  rowOf(v, 'Data').children.find(c => c.tag === 'button' && c.textContent === 'Copy request').click();
+  assert.ok(v.copied.at(-1).includes('Read the high-priority features, one at a time'));
 }
 
 console.log('PASS: viewer navigation, pages, gaps, map, search, copy for AI, changes, cited files, parts, overview cards, built page, Markdown');

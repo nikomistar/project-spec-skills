@@ -221,6 +221,7 @@ try {
   assert.equal(run(['move', '--to', 'project-spec'], dry).out.trim(), `py ${script}/knowledge.py move --to project-spec --repo .`);
   assert.equal(run(['summary'], dry).out.trim(), `py ${script}/knowledge.py summary --repo .`);
   assert.equal(run(['gaps', '--topic', 'security'], dry).out.trim(), `py ${script}/knowledge.py gaps --topic security --repo .`);
+  assert.equal(run(['next'], dry).out.trim(), `py ${script}/knowledge.py next --repo .`);
   r = run(['summary'], { cwd: path.join(ROOT, 'examples/parcel-desk') });
   assert.ok(r.code === 0 && r.out.includes('map: 1 of 1 features finished (100%)') && r.out.includes('security   last run 2026-11-16, 1 of 1 feature;'), r.out + r.err);
   assert.equal(run(['scan', '--write-status'], dry).out.trim(), `py ${script}/maintain.py scan --write-status --repo .`);

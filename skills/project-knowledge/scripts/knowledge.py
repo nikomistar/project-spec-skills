@@ -24,7 +24,10 @@ REVIEWS = ('security', 'abuse', 'validation', 'data', 'logic', 'flows', 'api', '
 REVIEW_TOPICS = {'abuse': 'security', 'flows': 'logic', 'failures': 'ops'}  # the topic a review's gaps get, where it is not the review's own word
 REVIEW_FILE = re.compile(r'(?:^|/)\d{4}-\d{2}-\d{2}-review-([a-z0-9-]+)\.md$')
 TICK = re.compile(r'^[ \t]*[-*] \[([ xX])\]', re.M)
-INVENTORY_HEAD = re.compile(r'^##[ \t]+.+:[ \t]*(finished|in progress|not started)[ \t]*$', re.M | re.I)
+INVENTORY_HEAD = re.compile(r'^##[ \t]+(.+):[ \t]*(finished|in progress|not started)[ \t]*$', re.M | re.I)
+INVENTORY_PRIORITY = re.compile(r'^Priority:[ \t]*(high|medium|low)\b', re.M | re.I)  # under a feature's heading: how early a review reads it
+SECOND_HEAD = re.compile(r'^##[ \t]', re.M)
+LEVELS = ('high', 'medium', 'low')
 CLOSED = ('done', 'rejected', 'duplicate')
 RECHECKS = ('not-checked', 'confirmed', 'not-reproduced', 'outdated')
 DECISIONS = ('open', 'accepted', 'rejected', 'deferred', 'done', 'duplicate')
@@ -1061,14 +1064,29 @@ def vault_pending(repo, vault):
     return sorted(pending, key=lambda p: p['path'])
 
 
+def inventory_features(text):
+    """The features of an inventory file, in its order: each one's name, its state and its `Priority` ('' when not ranked)."""
+    out = []
+    for head in INVENTORY_HEAD.finditer(text):
+        # a feature's lines end at the next heading, whatever it is a heading of
+        after = SECOND_HEAD.search(text, head.end())
+        rank = INVENTORY_PRIORITY.search(text, head.end(), after.start() if after else len(text))
+        out.append({'name': head.group(1).strip(), 'state': head.group(2).lower(), 'priority': rank.group(1).lower() if rank else ''})
+    return out
+
+
 def map_state(vault):
     """How far the map has got, from the inventory file: its features by state. None when the vault has no such file."""
     try:
         text = (vault / '.knowledge' / 'inventory.md').read_text(encoding='utf-8')
     except OSError:
         return None
-    states = [m.group(1).lower() for m in INVENTORY_HEAD.finditer(text)]
-    return {'finished': states.count('finished'), 'inProgress': states.count('in progress'), 'notStarted': states.count('not started')}
+    features = inventory_features(text)
+    states, ranks = [f['state'] for f in features], [f['priority'] for f in features]
+    state = {'finished': states.count('finished'), 'inProgress': states.count('in progress'), 'notStarted': states.count('not started')}
+    if any(ranks):  # said only when the file ranks its features: 'none' are the ones it has not ranked yet
+        state['priority'] = {level: ranks.count(level) for level in LEVELS} | {'none': ranks.count('')}
+    return state
 
 
 def review_of(note):
@@ -1077,6 +1095,25 @@ def review_of(note):
         return ''
     named = REVIEW_FILE.search(note['path'])
     return (note['meta'].get('review', '').strip() or (named.group(1) if named else '')).lower()
+
+
+def level_ticks(body):
+    """A review's checklist by level: {level: [ticked, all]} for the boxes under a `High`, `Medium` or `Low` heading.
+
+    Empty when the checklist is not under such headings (a run page written before features had a priority).
+    """
+    out, level = {}, ''
+    for line in body.splitlines():
+        head = HEADING.match(line)
+        if head:
+            level = (head.group(2) or '').strip().lower()
+            continue
+        tick = TICK.match(line)
+        if tick and level in LEVELS:
+            box = out.setdefault(level, [0, 0])
+            box[0] += tick.group(1) != ' '
+            box[1] += 1
+    return {level: out[level] for level in LEVELS if level in out}
 
 
 def open_gaps(notes):
@@ -1097,11 +1134,90 @@ def reviews_state(notes):
         ticks = TICK.findall(run['body']) if run else []
         done = sum(1 for t in ticks if t != ' ')
         out.append({'review': key, 'topic': topic, 'run': run['path'] if run else '', 'on': run['meta']['updated'] if run else '',
-                    'done': done, 'of': len(ticks),
+                    'done': done, 'of': len(ticks), 'levels': level_ticks(run['body']) if run else {},
                     'finished': bool(run) and done == len(ticks) and run['meta']['status'] != 'partial',
                     'openGaps': sum(1 for g in open_gaps(notes) if g['meta'].get('topic') == topic),
                     'ownGaps': sum(1 for g in open_gaps(notes) if g['meta'].get('review', '').lower() == key)})
     return out
+
+
+REVIEW_PHRASE = {'flows': 'their flows', 'logic': 'their logic', 'api': 'their API', 'ui': 'their UI', 'failures': 'failure paths'}
+ASK = 'Use the project-knowledge skill'
+REVIEW_ORDER = ('flows', 'logic', 'security', 'abuse', 'validation', 'data', 'failures', 'api', 'ui')  # the order the guide runs them in
+
+
+def plain_name(value):
+    """A feature's name as two pages may write it: without code marks, a leading path or letter case."""
+    return re.sub(r'\s+', ' ', value.replace('`', '')).strip().lower()
+
+
+def ticked_names(body):
+    """The names a run page's checklist has ticked."""
+    return {plain_name(m.group(1)) for m in re.finditer(r'^[ \t]*[-*] \[[xX]\][ \t]+(.+?)[ \t]*$', body, re.M)}
+
+
+def next_lines(repo, vault, notes):
+    """What a review can take up next, as requests a person pastes into their agent: by topic, and by feature.
+
+    It reads the inventory file and the run pages and decides nothing: a review takes one level of features at a
+    time, the high ones first, and the person chooses what goes on.
+    """
+    prefix = Path(os.path.relpath(vault, repo)).as_posix()
+    try:
+        features = inventory_features((vault / '.knowledge' / 'inventory.md').read_text(encoding='utf-8'))
+    except OSError:
+        features = None
+    if not features:
+        return [f'next: {prefix} has no inventory file, so there is no list of features to review',
+                f'  {ASK} to build a knowledge vault for this repository.']
+    count = {level: sum(1 for f in features if f['priority'] == level) for level in LEVELS}
+    unranked = sum(1 for f in features if not f['priority'])
+    lines = [f'next: what a review of {prefix} can take up, one level of features at a time',
+             'features by priority: ' + ', '.join(f'{count[level]} {level}' for level in LEVELS) + (f', {unranked} not ranked' if unranked else '')]
+    if not any(count.values()):
+        return lines + ['the features are not ranked yet, so a review has no order to read them in:', f'  {ASK} to rank the features.']
+    if unranked:
+        lines += [f'{unranked} features have no priority and are in no level:', f'  {ASK} to rank the features that have no priority yet.']
+    first = next(level for level in LEVELS if count[level])
+    top = [f['name'] for f in features if f['priority'] == first]
+    lines.append(f'{first}: ' + '; '.join(top))
+    runs = {r['review']: r for r in reviews_state(notes)}
+    by_path = {n['path']: n for n in notes}
+    lines.append('by topic: one list of questions over one level of features')
+    for key in REVIEW_ORDER:
+        r, phrase = runs[key], REVIEW_PHRASE.get(key, key)
+        if not r['run']:
+            lines += [f'  {key:<11}not run', f'    {ASK} in review mode: review the {first}-priority features for {phrase}.']
+            continue
+        if r['of'] and not r['levels']:  # a checklist that is one list, from before features had a priority
+            lines.append(f"  {key:<11}{r['done']} of {r['of']} features" + ('' if r['done'] < r['of'] else ', finished'))
+            if r['done'] < r['of']:
+                lines.append(f'    {ASK} to continue the {key} review from its run page.')
+            continue
+        said, ask = [], ''
+        for level in LEVELS:
+            done, of = r['levels'].get(level, [0, count[level]])
+            if not of:
+                continue
+            said.append(f'{level} {done} of {of}')
+            if ask or done >= of:
+                continue
+            ask = (f'{ASK} to continue the {key} review from its run page.' if done
+                   else f'{ASK} in review mode: go on with the {key} review for the {level}-priority features.')
+        lines.append(f"  {key:<11}{', '.join(said) or 'no checklist'}" + ('' if ask else ', finished'))
+        if ask:
+            lines.append('    ' + ask)
+    lines.append(f'by feature: every list of questions on one {first}-priority feature')
+    ticked = {key: ticked_names(by_path[r['run']]['body']) if r['run'] else set() for key, r in runs.items() if key in REVIEWS}
+    left = 0
+    for name in top:
+        done = sum(1 for key in REVIEWS if plain_name(name) in ticked[key])
+        if done < len(REVIEWS):
+            left += 1
+            lines += [f'  {name}: {done} of {len(REVIEWS)} reviews', f'    {ASK} in review mode: run every review on the feature "{name}".']
+    if not left:
+        lines.append(f'  every {first}-priority feature has been through all {len(REVIEWS)} reviews')
+    return lines
 
 
 def priority_rank(meta):
@@ -1124,9 +1240,13 @@ def summary_lines(repo, vault, notes, warnings):
     if state is None:
         lines.append('map: no inventory file, so how much of the product is mapped is not recorded')
     else:
-        total = sum(state.values())
+        total = state['finished'] + state['inProgress'] + state['notStarted']
         done = f" ({round(100 * state['finished'] / total)}%)" if total else ''
         lines.append(f"map: {state['finished']} of {total} features finished{done}, {state['inProgress']} in progress, {state['notStarted']} not started")
+        ranks = state.get('priority')
+        if ranks:
+            lines.append('features by priority: ' + ', '.join(f'{ranks[level]} {level}' for level in LEVELS)
+                         + (f", {ranks['none']} not ranked" if ranks['none'] else ''))
     partial = sum(1 for n in notes if n['meta']['type'] in ('note', 'area') and n['meta']['status'] == 'partial')
     stale = sum(1 for n in notes if n['meta']['type'] in ('note', 'area') and n['stale'])
     lines.append(f'pages: {partial} partial, {stale} with code changed since the last check')
@@ -1155,7 +1275,10 @@ def summary_lines(repo, vault, notes, warnings):
         else:
             text = ('last run ' if r['finished'] else 'started ') + r['on']
             if r['of']:
-                text += f", {r['done']} of {r['of']} feature{'' if r['of'] == 1 else 's'}" + ('' if r['finished'] else ', not finished')
+                text += f", {r['done']} of {r['of']} feature{'' if r['of'] == 1 else 's'}"
+                if r['levels']:
+                    text += ' (' + ', '.join(f'{level} {done} of {of}' for level, (done, of) in r['levels'].items()) + ')'
+                text += '' if r['finished'] else ', not finished'
             text += f"; {prefix}{r['run']}"
         own = f"; {r['ownGaps']} open gap{'' if r['ownGaps'] == 1 else 's'} written by it" if r['ownGaps'] else ''
         lines.append(f"  {r['review']:<11}{text}; {r['openGaps']} open gap{'' if r['openGaps'] == 1 else 's'} with topic {r['topic']}{own}")
@@ -1225,7 +1348,9 @@ def live_page(repo, vault):
                 f'<h1>The spec has {len(errors)} error{"s" if len(errors) != 1 else ""}</h1>'
                 '<p>Fix the pages below (the <code>check</code> command prints the same list), then reload.</p>'
                 f'<ul>{items}</ul></body>')
-    return viewer_html(page_payload(repo, vault, notes, edges, warnings, errors=errors) | {'live': True})
+    # The folder of the repository on this machine, so a page can give the full path of its file. `serve` answers
+    # this machine only; a built page goes to other people and does not carry it.
+    return viewer_html(page_payload(repo, vault, notes, edges, warnings, errors=errors) | {'live': True, 'repoRoot': str(repo)})
 
 
 def source_base(value, commit):
@@ -1279,7 +1404,7 @@ def make_server(repo, vault, port):
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['check', 'snapshot', 'serve', 'build', 'move', 'summary', 'gaps'])
+    parser.add_argument('command', choices=['check', 'snapshot', 'serve', 'build', 'move', 'summary', 'gaps', 'next'])
     parser.add_argument('--repo', required=True, type=Path)
     parser.add_argument('--vault', type=Path, help='default: the single vault in the repository, a folder with 00-index.md')
     parser.add_argument('--strict', action='store_true', help='fail check when freshness warnings exist')
@@ -1390,9 +1515,10 @@ def main(argv=None):
         missing = wanted - by_id.keys()
         if missing:
             errors.append('Unknown note IDs: ' + ', '.join(sorted(missing)))
-    if args.command in ('summary', 'gaps'):
+    if args.command in ('summary', 'gaps', 'next'):
         # A report, not a check: it still answers when some pages are broken, and says that they are left out.
         lines = (summary_lines(repo, vault, notes, warnings) if args.command == 'summary'
+                 else next_lines(repo, vault, notes) if args.command == 'next'
                  else gap_lines(notes, args.state, args.topic, args.priority, args.area,
                                 Path(os.path.relpath(vault, repo)).as_posix() + '/', args.review))
         if errors:

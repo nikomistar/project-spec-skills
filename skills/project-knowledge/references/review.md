@@ -1,8 +1,8 @@
 # Reviewing one topic
 
-A map says what the product does. A review goes through the same product again with one topic in mind (is it safe, do the form and the server check the same things, do its rules agree with each other, is its API in order) and a fixed list of questions, so that nothing is skipped because it looked fine. It is a separate pass that a person asks for by name. It opens every entry point in its scope again, so it costs about as much reading as the features it covers; do one topic per pass.
+A map says what the product does. A review goes through the same product again with one topic in mind (is it safe, do the form and the server check the same things, do its rules agree with each other, is its API in order) and a fixed list of questions, so that nothing is skipped because it looked fine. It is a separate pass that a person asks for by name. It opens every entry point in its scope again, so it costs about as much reading as the features it covers.
 
-A person may ask for every review at once. Then run them one after another, each as a pass of its own with its own run page: `flows` and `logic` first, then `security`, `abuse`, `validation`, `data`, `failures`, `api` and `ui`. Finish one before the next starts, so that each pass finds the gaps of the ones before it in the queue. On a product of more than about twenty features say, before you start, that this will not fit one session, and offer to take the reviews one per session in the same order.
+A review is asked for in one of two ways: **by topic**, one list of questions over the features ("review the product for security"), or **by feature**, every list on one feature ("run every review on the checkout"). Either way it reads the high-priority features first and stops when that level is done; the person says whether it goes on with the rest ([Which features first](#which-features-first), [By topic or by feature](#by-topic-or-by-feature)).
 
 A review leaves three things:
 
@@ -23,14 +23,107 @@ A review reads code. It runs no scanner, no test and no application, like every 
 ## The pass
 
 1. **Scope.** The whole product, an area, one feature, or what changed since a commit or a day ("review the security of what changed last week" takes the features the diff touches). Say which before you start.
-2. **The list.** A review needs a map: [the inventory file](../SKILL.md#the-inventory-file) is its list of features and entry points. Without a vault, say so and offer a map first. A question about one feature in a repository that has no vault is an **investigate**, and it ends as a report. A feature the inventory has as `not started` is reviewed from the code alone, and the run page says its page does not exist yet.
-3. **The run page.** Create `runs/<date>-review-<topic>.md` with `review: "<topic>"` and `status: "partial"`: the topic, the scope, the revision, and the features in scope as a checklist (`- [ ] Name of the feature`). Write a feature's name as plain text, or its page's path in code formatting: a run page never links to vault pages, and `check` refuses it when it does. Tick a feature when every question was asked of every one of its entry points. Save it after each feature. A later session reads this page first and goes on with the first unticked feature. The viewer and the `summary` command read this page to say which reviews were run, when, and how far each got, so keep the property, the name and the checklist as written here.
+2. **The list.** A review needs a map: [the inventory file](../SKILL.md#the-inventory-file) is its list of features and entry points. Without a vault, say so and offer a map first. A question about one feature in a repository that has no vault is an **investigate**, and it ends as a report. A feature the inventory has as `not started` is reviewed from the code alone, and the run page says its page does not exist yet. A review does not write that page. What the code answers plainly about such a feature goes on the run page under `## Rules found`, one line each with the file, for the map to take up when it reaches the feature. Take the features in the order of [Which features first](#which-features-first), and write each feature's `Priority` first when the inventory does not have it.
+3. **The run page.** Each review has one run page, and it is the ledger of that review: `runs/<date>-review-<topic>.md` with `review: "<topic>"` and `status: "partial"`. It says the topic, the scope, the revision, and lists the features of the product (or of the scope the person named) as a checklist (`- [ ] Name of the feature`), under one heading per level and in the order they will be read:
+
+   ```markdown
+   ## Feature checklist
+
+   ### High
+
+   - [ ] Checkout
+   - [ ] Team members
+
+   ### Medium
+
+   - [ ] Profile
+
+   ### Low
+
+   - [ ] About page
+
+   ## Read
+
+   - Checkout: followed `web /checkout`, `api order.create` and `job capture-payment` to `src/orders/service.ts`; questions 7 and 13 had nothing to ask (no files, no job of its own).
+   ```
+
+   - **The whole list, not only this pass.** The checklist names every feature of every level, with the feature's name as the inventory has it. This pass ticks the ones it reviews; the others stay unticked, so the page says what the review has not read. Leave out a level that has no feature.
+   - **One page per review, used again.** A later pass of the same review, for the next level or for one more feature, goes on in this page: it ticks there, adds a feature the list lacks under its level, and sets `updated`. Make a new page only when the person asks to run the review again from the start.
+   - **A line under `Read` for each reviewed feature**: which entry points were followed and to which file, and which questions had nothing to ask there. A feature is ticked when every question was asked of every one of its entry points and this line is written. A tick without the line is not a review.
+   - Write a feature's name as plain text, or its page's path in code formatting: a run page never links to vault pages, and `check` refuses it when it does. Save the page after each feature. A later session reads it first and goes on with the first unticked feature of the level it was asked for.
+   - The viewer and the `summary` and `next` commands read this page to say which reviews were run, when, and how far each got in each level. So keep the property, the name, the three level headings and the checklist as written here, and use no other checkbox on the page.
 4. **One feature at a time.** Read the feature's page, then open each entry point and answer the topic's questions from the code. The page tells you where to look; it is not the evidence. Ask every question of every entry point it applies to, and do not stop at the first finding. A question the product has nothing for (it has no accounts, takes no files, calls no other service) is skipped: name it once on the run page, under the checklist, with the reason.
 5. **Each answer goes to one place.**
    - The code does it, and the page does not say so: add the rule to the page, with the next free number. For security, also set [the page's `access`](format.md#properties).
    - The code does it, and the page says so: nothing to write.
    - The code does not do it, does it in one place and not in another, or you cannot tell whether it is meant: a gap when it matters, a line on the run page when it is small ([What is worth a gap](#what-is-worth-a-gap)).
-6. **Finish.** Run `check`. Set the run page to `current` when every feature in scope is ticked. Report real counts: features reviewed out of those in scope, rules added, gaps written by priority, lines noted, and "Not covered" with the tools that would cover it.
+6. **Stop at the end of the level.** A pass covers one level: the high features unless the person named another level, a feature or an area. When its last feature is ticked, stop, even if time is left. Go on into the next level only when the person asked for more than one ("every level", "the whole product").
+7. **Finish.** Run `check`. The sources of a gap or a page this pass wrote and read are accepted with `snapshot --notes <ids>`; do not snapshot a page whose changed source you did not read. Set the run page to `current` when every box on it is ticked, so a review that has read one level of three stays `partial`. Then run `next` and give the person its requests as they are printed: how to go on with this review, which other reviews have not read this level, and which features can be read whole. Do not choose for them. Report real counts: features reviewed out of those in scope, for each level, rules added, gaps written by priority, lines noted, and "Not covered" with the tools that would cover it. A level that was not reviewed is said to be not reviewed, never clean.
+
+## Which features first
+
+A product has features where a mistake costs money, access or somebody's data, and features where it costs a wrong avatar. A review reads the first kind first. The order comes from what each feature does, read from the code as a few fixed signals, and not from how important a feature looks.
+
+**The signals.** Give a feature each signal that is its own business, and not one it only passes by: the checkout has `money`, a page that shows a price does not.
+
+| Signal | The feature |
+| --- | --- |
+| `money` | takes, moves or prices money: a payment, a plan, an invoice, a balance, a discount |
+| `accounts` | decides who gets in and what they may do: sign-in, recovery, roles, invites, sessions, keys and tokens |
+| `others-data` | reads or changes records that belong to another person, team or tenant, or lets an admin act on anyone's |
+| `destructive` | removes or overwrites what cannot be brought back: a bulk delete, the deletion of an account, an import that replaces, files on a person's disk |
+| `public` | can be reached by a stranger without signing in, or is called by another system (a webhook, a public API). This is not a page's `access: ["public"]`, which only says the feature has no sign-in |
+| `files` | takes a file from a caller, or an address the product then fetches |
+| `outbound` | sends messages to people or calls another service, above all one that is paid for |
+| `central` | is on the way every user takes (signing up, the first use, paying), or writes a record that three or more other features read |
+
+**The level follows from the signals by rule**: `high` with `money`, `accounts`, `others-data` or `destructive`; `medium` with any of the other four and none of those; `low` with no signal. Do not raise or lower a level by feel: a level a person cannot trace to a signal is a guess. Write it in [the inventory file](format.md#the-inventory-file) as one line under the feature's heading, with its signals as the reason:
+
+```text
+Priority: high (money, others-data)
+Priority: medium (files)
+Priority: low
+```
+
+- **When it is written.** With the inventory, from what the entry points show, and corrected when the feature is finished and its code was read. A review of a vault whose inventory has no `Priority` lines writes them first, for the features in scope: from the inventory and the features' pages, opening code only for a feature that has no page. This is minutes of reading, not a pass. A level is a level of the whole inventory: when a person asks for "the high-priority features" and part of the inventory has no `Priority`, rank that part first, because a feature nobody ranked may belong to the level. A review of features the person named ranks only those.
+- **A person's word wins.** Only the person knows that one export feeds the accountant and that nobody uses the old importer. When they set a level, write it with their reason and their name, `Priority: high (set by Ana: the accountant's export)`, and never change that line.
+- **Say the list before the pass.** Before the first feature, tell the person how many features each level has and name the high ones, so they can correct the list. Do not wait for an answer.
+- **The person's order wins.** If they name the features or the order to read them in, read them in that order.
+- **When most are high, the level sorts nothing.** If more than half of the features in scope come out `high`, read the signals again and keep each only where it is the feature's own business. Say in the report how many you moved.
+- **A level is an order, not a verdict.** A `low` feature is reviewed last and only when the person asks, and a mistake can live there too. The report says for each level how many features were reviewed; it never calls an unreviewed level clean. A person may name a level as the scope ("review the medium features for security").
+
+**One topic.** Inside each level, a review of one topic takes first the features that carry one of that topic's signals:
+
+| Review | Its signals |
+| --- | --- |
+| `security` | `accounts`, `others-data`, `public`, `files`, `money` |
+| `abuse` | `public`, `files`, `outbound`, `money` |
+| `validation` | `public`, `files`, `money` |
+| `data` | `money`, `others-data`, `destructive`, `central` |
+| `logic` | `money`, `accounts`, `central` |
+| `flows` | `money`, `accounts`, `central`, `destructive` |
+| `failures` | `outbound`, `destructive`, `money` |
+| `api` | `public`, `outbound` |
+| `ui` | none: the order of the level |
+
+So a profile page that takes an avatar is `medium` because of `files`: a security review reads it before any `low` feature and first among the `medium` ones, and a logic review reads it late.
+
+## By topic or by feature
+
+Do not take every list over every feature in one pass, even when a person asks for "everything". The code is then read once and the lists are answered from memory: it is quick and finds a fraction of what the same lists find one at a time. Offer the two ways below and let the person pick; `next` prints the request for each.
+
+**By topic.** One list of questions over one level of features. This is [the pass](#the-pass) above. A person who wants several topics gets them as separate passes, one after another, each finished before the next starts so that it finds the gaps of the ones before it in the queue: `flows` and `logic` first, then `security`, `abuse`, `validation`, `data`, `failures`, `api` and `ui`. Say which of them have little to ask of this product (an API review of an app that calls nothing), so the person can leave them out.
+
+**By feature.** Every list on one feature, for a feature that matters enough to be read whole. One feature per pass; a few small ones of the same area when the person names the area.
+
+1. Read the feature's page, open every one of its entry points and follow each to the code that decides the behavior.
+2. Ask the lists in four groups, in this order: `flows` and `logic`; then `security`, `abuse` and `validation`; then `data`, `failures` and `api`; then `ui`.
+3. Finish a group before you start the next: its rules, its gaps and its noted lines written, the feature ticked and its `Read` line written on that group's run pages, the files saved. Answer each group from the code and open a file again when you need it, not from what you remember of the group before.
+4. A gap gets the `review` of the list whose question found it, and that list's `topic` unless a rule of this guide names another (a flows review that meets a skipped check, a tool with nobody else to harm). The first list that meets a finding writes it. A later list that asks about the same thing adds nothing, and its `Read` line says where the finding is.
+5. Each review's run page is the same ledger as in a pass by topic. Where a review has none yet, make it with the whole checklist; this pass ticks one feature on each of the nine.
+6. Then stop, report what each list found, and give the person the requests `next` prints.
+
+**The person chooses what goes on.** After the high level a review has read what matters most, and the rest is the person's call: the same review on the medium features, another review on the high ones, or one more feature read whole. A person who wants no stops says so ("every level", "do not stop between levels") and gets the levels one after another.
 
 ## A product that is not a web application
 
@@ -41,6 +134,13 @@ The lists are written in the words of a product with accounts, forms, a server a
 - **A record** is also a file on disk, a setting, a temporary folder.
 - **Two at once** is also two running copies of the app, or the old version and the new one during an update.
 - **Another service** is also the operating system, the store, the update feed.
+- **The signals** of [Which features first](#which-features-first) are read the same way.
+  - `public` is what a stranger can reach: a command a person runs on their own machine is not public, a local server that listens beyond this machine is.
+  - `destructive` is a command that deletes or clears a folder or a file the person names. Writing its own output under a name it chose is not, even when a file of that name was there.
+  - `files` is a path, a folder or an address the person passes in, where reading or writing it is what the command is for. An optional side file every command takes (a history, a cache) does not count.
+  - `outbound` is a call over the network. Starting a program on the same machine is not.
+  - `central` is the step every use begins with: the install, the setup, the first command the others build on.
+- **Nobody else to harm.** In a tool with one user, on their own machine, a missing check on a path or a file harms no other person. Such a gap is about that person's own work: give it `topic: "data"` when it can lose their files and `topic: "ops"` otherwise, and keep `security` for what another person or another system can reach.
 
 What the system does in such a moment (which dialog it shows, whether it starts a second copy) is often not in the repository. Say what the code does and does not handle, name the rest under "Not covered", and write the doubt as a `knowledge-gap`.
 
@@ -69,7 +169,7 @@ A gap asks a person for a decision, and a person reads a queue of forty, not of 
 
 The rules in [gaps.md](gaps.md) apply. A review adds these:
 
-- **Look in the queue first.** A gap that already asks the question gets `topic` when it has none and a dated line in `Discussion`; it does not get a twin.
+- **Look in the queue first.** A gap that already asks the question does not get a twin. It gets `topic` when it has none, and a dated line in `Discussion` only when this pass saw what the page does not say: another entry point, another consequence. Meeting the same question again is not news and adds no line.
 - **One doubt per page.** The same missing check in several entry points of one feature is one gap that lists them. In two features it is two gaps, because each feature has its own owner and decision.
 - **In three features or more it is a pattern, and one gap.** The decision is one for the whole product, so ask it once: the title asks it of the product ("Should every text field refuse characters the database cannot store?"), `Current behavior` has a table of the places (feature, entry point, what the code does there), `areas` names every area it touches, and `priority` is that of the worst place. When a later feature shows the same thing, add a row to that gap and a dated line to `Discussion`. When you meet the third place and two gaps already ask it, write the pattern gap and close the two as `duplicate` of it.
 - **The title is the question a person decides**: "Should a member be able to change another member's role by saving the profile form?", not "Broken access control in users.save".
@@ -212,7 +312,7 @@ Gaps get `topic: "api"`. For what another system can call, and for the calls the
 4. **Marked as outdated and still used.** A procedure the code marks deprecated (a comment, an annotation, a `legacy` or `v1` name) that a client still calls, and calls to another service that the code or its SDK marks deprecated. Outdated package versions are for a tool; see "What a review is not".
 5. **Input.** Does every endpoint check its input on the server? Do lists have a maximum page size?
 6. **Consistency.** The same thing under two names, errors of different shape or status, dates or money in different formats between endpoints.
-7. **The written contract.** An OpenAPI file, a README or types shared with clients that say something else than the code is a `conflict` gap.
+7. **The written contract.** An OpenAPI file, a README or types shared with clients that say something else than the code is a `conflict` gap, or a noted line when it is small.
 8. **Calls out.** Is there a timeout and a retry? What does the person see when the other service is down? Is the call safe to repeat?
 
 ## UI

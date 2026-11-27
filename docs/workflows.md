@@ -142,22 +142,52 @@ matters as gaps with topic security, note the small things on the run page, and
 tell me how many features you reviewed.
 ```
 
-To have a small product (up to about twenty features) checked in one session, ask for all of them:
+A review is asked for by topic, one list of questions over the features, or by feature, every list on one feature. Start by letting the agent rank the features and say what can be run:
 
 ```text
-Use the project-knowledge skill in review mode: run every review the guide has a
-list for, one topic per pass, each with its own run page. Start with flows and
-logic, then security, abuse, validation, data, failure paths, API and UI.
-
-Go by the inventory file, one feature at a time. Read the code and run nothing.
-Before writing a gap, look in the queue for one that already asks the question.
-Write what matters as gaps and note the small things on the run page.
-
-When all are done, tell me for each review how many features it covered, how
-many gaps it wrote by priority and how many things it noted.
+Use the project-knowledge skill to rank the features: which ones should a review
+read first, and why? Then tell me what I can run next.
 ```
 
-On a bigger product run one review per session, one after another. Several agents reviewing one spec at the same time do not see each other's gaps and write the same question twice.
+It answers with the requests of `npx project-spec next`, which you can run yourself at any time:
+
+```text
+next: what a review of project-spec can take up, one level of features at a time
+features by priority: 3 high, 11 medium, 6 low
+high: Checkout; Team members; Invoices
+by topic: one list of questions over one level of features
+  flows      not run
+    Use the project-knowledge skill in review mode: review the high-priority features for their flows.
+  security   high 2 of 3, medium 0 of 11, low 0 of 6
+    Use the project-knowledge skill to continue the security review from its run page.
+  data       high 3 of 3, medium 0 of 11, low 0 of 6
+    Use the project-knowledge skill in review mode: go on with the data review for the medium-priority features.
+by feature: every list of questions on one high-priority feature
+  Checkout: 2 of 9 reviews
+    Use the project-knowledge skill in review mode: run every review on the feature "Checkout".
+```
+
+- **By topic** suits a question about the whole product ("is it safe"). Run the topics one after another, `flows` and `logic` first.
+- **By feature** suits a feature that matters enough to be read whole. The agent opens it once and asks the nine lists in four groups, writing each group down before the next.
+- **A review stops at the end of a level.** After the high-priority features it reports and prints how to go on; the medium and low ones are read when you ask. Say "every level" for no stops.
+- **Every list over every feature in one go is not offered.** It was tried on a real product: 17 minutes instead of hours, and 5 of the 27 gaps that separate passes had found.
+- Several agents reviewing one spec at the same time do not see each other's gaps and write the same question twice.
+
+### Which features are read first
+
+A review reads the features in the order of their priority, so a pass that stops after thirty features of ninety has read the thirty that matter most. The agent does not judge importance by feel. It marks what each feature does with a few fixed signals, and the level follows by rule:
+
+| Level | The feature has one of |
+| --- | --- |
+| `high` | `money` (payments, plans, invoices), `accounts` (sign-in, roles, invites, tokens), `others-data` (records of another person or team), `destructive` (what cannot be brought back) |
+| `medium` | `public` (no sign-in, or called by another system), `files` (an upload, an address the product fetches), `outbound` (messages, calls to another service), `central` (on every user's way, or read by many features) |
+| `low` | none of these |
+
+It writes the result into the inventory file, one line per feature: `Priority: high (money, others-data)`. Ask for the list alone with `Use project-knowledge to rank the features.`; it reads the pages, not the code again, and takes minutes.
+
+- **Correct it.** Only you know that one export feeds the accountant. Say so, or edit the line: `Priority: high (set by Ana: the accountant's export)`. The agent never changes a line a person set.
+- **A level is an order, not a verdict.** A `low` feature is reviewed last, and only when you ask. `summary` and the viewer say for each review how many features of each level it has read, so an unread level is never taken for a clean one.
+- **A review of one topic** also looks at the signals inside a level: a profile page that takes an avatar is `medium` because of `files`, so a security review reads it first among the medium features.
 
 | Topic | What it asks |
 | --- | --- |
@@ -202,7 +232,7 @@ reviews:
 
 `npx project-spec gaps --topic security --priority high` lists the gaps one filter leaves, the most urgent first, each with its file, so an agent can be asked for "the high security gaps" without opening the viewer. `--review flows` lists what one review wrote, which a topic cannot when two reviews share it.
 
-A review opens every entry point again, so it takes about as long as the map of the features it covers. Run one topic at a time, and name an area or "what changed last week" to keep it short. It reads code: vulnerable or outdated packages, secrets in the Git history and server configuration are for tools (`npm audit`, `osv-scanner`, a secret scanner), and the report names what it did not cover. Security gaps describe weaknesses of a live product, so think before you publish the vault where people outside the team can read it.
+A review opens every entry point again, so it takes about as long as the map of the features it covers. Name a level, an area or "what changed last week" to keep it short. It reads code: vulnerable or outdated packages, secrets in the Git history and server configuration are for tools (`npm audit`, `osv-scanner`, a secret scanner), and the report names what it did not cover. Security gaps describe weaknesses of a live product, so think before you publish the vault where people outside the team can read it.
 
 ## Gaps are decided by people
 

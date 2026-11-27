@@ -18,7 +18,7 @@ const VIEWER_REL = 'assets/viewer.html';
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const MARKER = '.project-spec.json'; // written into every copy: which version it is and what its files looked like
 const SKIP = new Set(['__pycache__', '.DS_Store', MARKER]);
-const KNOWLEDGE = new Set(['serve', 'build', 'check', 'snapshot', 'move', 'summary', 'gaps']);
+const KNOWLEDGE = new Set(['serve', 'build', 'check', 'snapshot', 'move', 'summary', 'gaps', 'next']);
 const MAINTAIN = new Set(['scan', 'receipt', 'finish']);
 const COVERAGE = 'coverage'; // its own helper, which takes no command word
 // Skills earlier versions shipped; project-knowledge took over what they did. spec-change (changing the product from
@@ -39,6 +39,9 @@ Read the spec
       Where the spec stands: how much of the map is finished, the gaps by state and topic, each review and when it ran.
   project-spec gaps [--state open|closed|all|STATE] [--topic T] [--priority P] [--area ID] [--review R]
       List gaps, the most urgent first, each with its file.
+  project-spec next
+      What a review can take up next, as requests to paste into your agent: by topic and by feature,
+      the high-priority features first.
   project-spec check | snapshot [options]
       The knowledge helper; --repo defaults to the current folder.
   project-spec move --to DIR
